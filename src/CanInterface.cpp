@@ -1,40 +1,22 @@
+///
+///  @ Author: Kevin Gilliam
+///  @ Create Time: 2022-09-06 11:44:37
+///  @ Modified by: Kevin Gilliam
+///  @ Modified time: 2022-09-06 14:56:08
+///  @ Description:
+///
+
 #include "include/CanInterface.h"
 
 #include <FlexCAN_T4.h>
 #include <stdint.h>
 
-// FlexCAN_T4FD<CAN3, RX_SIZE_256, TX_SIZE_16> FD; // can3 port
 FlexCAN_T4<CAN1, RX_SIZE_256, TX_SIZE_16> can1; // can1 port
 
 void initCanInterfaces()
 {
-    // This is example code for flexible data rate CAN BUS, 
-    // which I don't think the Karbon uC supports
-
-    // FD.begin();
-    // 
-    // CANFD_timings_t config;
-    // config.clock = CLK_24MHz;
-    // config.baudrate = 500000;    // 500kbps arbitration rate
-    // config.baudrateFD = 2000000; // 2000kbps data rate
-    // config.propdelay = 190;
-    // config.bus_length = 1;
-    // config.sample = 75;
-
-    // FD.setRegions(64);
-    // FD.setBaudRateAdvanced(config, 1, 1);
-    // FD.onReceive(canSniff);
-    // FD.setMBFilter(ACCEPT_ALL);
-    // FD.setMBFilter(MB13, 0x1);
-    // FD.setMBFilter(MB12, 0x1, 0x3);
-    // FD.setMBFilterRange(MB8, 0x1, 0x04);
-    // FD.enableMBInterrupt(MB8);
-    // FD.enableMBInterrupt(MB12);
-    // FD.enableMBInterrupt(MB13);
-    // FD.enhanceFilter(MB8);
-    // FD.enhanceFilter(MB10);
-    // FD.distribute();
-    // FD.mailboxStatus();
+    pinMode(CAN1_PIN, OUTPUT);
+    digitalWrite(CAN1_PIN, LOW);
 
     can1.begin();
     can1.setBaudRate(500000); // 500kbps data rate
@@ -47,15 +29,19 @@ void initCanInterfaces()
 bool updateCanBusEvents(CAN_message_t &msg)
 {
     can1.events();
-    // FD.events(); /* needed for sequential frame transmit and callback queues */
     return (can1.readMB(msg));
 }
 
+
+/**
+ * @brief
+ *
+ */
 void sendTestFrame()
 {
-    static int d;
     CAN_message_t msg2;
     msg2.id = 0x401;
+    static int d = 0;
 
     for (uint8_t i = 0; i < 8; i++)
     {
@@ -66,22 +52,9 @@ void sendTestFrame()
     msg2.buf[1] = d++;
     can1.write(msg2); // write to can1
 
-    // CANFD_message_t msg;
-    // msg.len = 64;
-    // msg.id = 0x4fd;
-    // msg.seq = 1;
-    // for (uint8_t i = 0; i < 64; i++)
-    // {
-    //     msg.buf[i] = i + 1;
-    // }
-    // msg.buf[0] = d;
-    // FD.write(msg); // write to can3
 }
 
-void sendMessageOnBus(CAN_message_t &msg, uint8_t busNo)
-{
 
-}
 void canSniff(const CANFD_message_t &msg)
 {
     Serial.print("ISR - MB ");

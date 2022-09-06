@@ -19,8 +19,6 @@ int main()
     {
       pingHeartBeat();
     }
-
-    // Serial.println("Teensy 4.0 Triple CAN test");
   }
   return 0;
 }
