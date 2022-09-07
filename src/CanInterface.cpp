@@ -7,6 +7,7 @@
 ///
 
 #include "include/CanInterface.h"
+#include "include/debug.h"
 
 #include <FlexCAN_T4.h>
 #include <stdint.h>
@@ -22,8 +23,10 @@ void initCanInterfaces()
     can1.setBaudRate(500000); // 500kbps data rate
     can1.enableFIFO();
     can1.enableFIFOInterrupt();
-    can1.onReceive(FIFO, canSniff20);
+
     can1.mailboxStatus();
+    CONFIG_DEBUG_PIN_1();
+    CLR_DEBUG_PIN_1();
 }
 
 bool updateCanBusEvents(CAN_message_t &msg)
@@ -37,23 +40,22 @@ bool updateCanBusEvents(CAN_message_t &msg)
  * @brief
  *
  */
-void sendTestFrame()
+void canSendMessage(uint32_t id, char *mBuff, uint8_t len)
 {
-    CAN_message_t msg2;
-    msg2.id = 0x401;
-    static int d = 0;
+    SET_DEBUG_PIN_1();
+    CAN_message_t msg;
+    msg.id = 0x401;
+    msg.len = len <= MAX_MESSAGE_LENGTH ? len : MAX_MESSAGE_LENGTH;
 
-    for (uint8_t i = 0; i < 8; i++)
+    for (uint8_t ii = 0; ii < msg.len; ii++)
     {
-        msg2.buf[i] = i + 1;
+        msg.buf[ii] = mBuff[ii];
     }
 
-    msg2.id = 0x402;
-    msg2.buf[1] = d++;
-    can1.write(msg2); // write to can1
-
+    msg.id = id;
+    can1.write(msg); // write to can1
+    CLR_DEBUG_PIN_1();
 }
-
 
 void canSniff(const CANFD_message_t &msg)
 {
@@ -106,4 +108,14 @@ void canSniff20(const CAN_message_t &msg)
         Serial.print(" ");
     }
     Serial.println();
+}
+
+void registerCanRxCallback(_MB_ptr callbackFn)
+{
+    can1.onReceive(FIFO, callbackFn);
+}
+
+void sendMessage(const CAN_message_t &msg)
+{
+        can1.write(msg); // write to can1
 }

@@ -11,14 +11,11 @@ bool printMessage();
 int main()
 {
   setupExec();
-  bool newMessageFlag;
+  // bool newMessageFlag;
   while (1)
   {
-    newMessageFlag = printMessage();
-    if (newMessageFlag)
-    {
-      pingHeartBeat();
-    }
+    printMessage();
+    pingHeartBeat();
   }
   return 0;
 }
