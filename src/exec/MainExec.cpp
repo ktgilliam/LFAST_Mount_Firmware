@@ -2,7 +2,7 @@
  ///  @ Author: Kevin Gilliam
  ///  @ Create Time: 2022-09-06 09:36:04
  ///  @ Modified by: Kevin Gilliam
- ///  @ Modified time: 2022-09-07 15:30:16
+ ///  @ Modified time: 2022-09-07 16:42:26
  ///  @ Description:
  ///
 
@@ -11,9 +11,9 @@
 #include <Arduino.h>
 #include <cctype>
 
-#include "util/heartbeat.h"
-#include "util/debug.h"
-#include "can/CanInterface.h"
+#include <heartbeat.h>
+#include <debug.h>
+#include <CanInterface.h>
 #include "SetupExec.h"
 #include "CanTestExec.h"
 

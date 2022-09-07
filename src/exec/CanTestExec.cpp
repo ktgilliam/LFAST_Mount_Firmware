@@ -12,8 +12,8 @@
 #include <stdio.h>
 #include <string.h>
 
-#include "can/CanMessages.h"
-#include "can/CanInterface.h"
+#include <CanMessages.h>
+#include <CanInterface.h>
 
 IntervalTimer testExecTimer;
 CanTestMode testMode;

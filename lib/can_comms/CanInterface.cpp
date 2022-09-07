@@ -7,7 +7,7 @@
 ///
 
 #include "CanInterface.h"
-#include "util/debug.h"
+#include <debug.h>
 
 #include <FlexCAN_T4.h>
 #include <stdint.h>

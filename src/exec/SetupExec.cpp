@@ -2,7 +2,7 @@
  ///  @ Author: Kevin Gilliam
  ///  @ Create Time: 2022-09-06 09:38:17
  ///  @ Modified by: Kevin Gilliam
- ///  @ Modified time: 2022-09-07 15:30:23
+ ///  @ Modified time: 2022-09-07 16:42:01
  ///  @ Description:
  ///
 
@@ -12,10 +12,10 @@
 #include <FlexCAN_T4.h>
 #include <cstdint>
 
-#include "can/CanMessages.h"
-#include "can/CanInterface.h"
-#include "util/heartbeat.h"
-#include "util/SerialInterface.h"
+#include <CanMessages.h>
+#include <CanInterface.h>
+#include <heartbeat.h>
+#include <SerialInterface.h>
 #include "CanTestExec.h"
 
 

@@ -5,7 +5,7 @@
 #include <algorithm>
 #include <sstream>
 #include <FlexCAN_T4.h>
-#include "util/SerialInterface.h"
+#include <SerialInterface.h>
 
 void processMessage(uint32_t msgId);
 void invalidMessageHandler(char *guts, int len);
