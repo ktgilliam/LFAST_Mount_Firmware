@@ -1,4 +1,4 @@
-#include "include/heartbeat.h"
+#include "heartbeat.h"
 #include <cctype>
 
 #include <Arduino.h>
@@ -13,6 +13,7 @@ enum ledState
 int ledPin = 13;
 static uint32_t cnt = 0;
 static ledState heartbeatState = LED_OFF;
+uint32_t heartbeatPeriodCnts = 1000;
 
 void resetHeartbeat();
 ledState toggleHeartbeatState(ledState hbState);
@@ -20,9 +21,9 @@ void setHeartbeatStateOff();
 void setHeartbeatStateOn();
 void updateLedPin();
 
- /**
- * @brief 
- * 
+/**
+ * @brief
+ *
  */
 void initHeartbeat()
 {
@@ -31,9 +32,9 @@ void initHeartbeat()
     updateLedPin();
 }
 
- /**
- * @brief 
- * 
+/**
+ * @brief
+ *
  */
 void resetHeartbeat()
 {
@@ -42,16 +43,16 @@ void resetHeartbeat()
     updateLedPin();
 }
 
- /**
- * @brief 
- * 
- * @return true 
- * @return false 
+/**
+ * @brief
+ *
+ * @return true
+ * @return false
  */
 bool pingHeartBeat()
 {
     bool pinToggledFlag = false;
-    if (cnt++ >= HEARTBEAT_TOGGLE_CNTS)
+    if (cnt++ >= heartbeatPeriodCnts)
     {
         cnt = 0;
         heartbeatState = toggleHeartbeatState(heartbeatState);
@@ -61,11 +62,15 @@ bool pingHeartBeat()
     return (pinToggledFlag);
 }
 
- /**
- * @brief 
- * 
- * @param hbState 
- * @return ledState 
+void setHeartBeatPeriod(uint32_t cnts)
+{
+    heartbeatPeriodCnts = cnts;
+}
+/**
+ * @brief
+ *
+ * @param hbState
+ * @return ledState
  */
 ledState toggleHeartbeatState(ledState hbState)
 {
@@ -82,27 +87,27 @@ ledState toggleHeartbeatState(ledState hbState)
     return (returnVal);
 }
 
- /**
+/**
  * @brief Set the Heartbeat State Off object
- * 
+ *
  */
 void setHeartbeatStateOff()
 {
     heartbeatState = LED_OFF;
 }
 
- /**
+/**
  * @brief Set the Heartbeat State On object
- * 
+ *
  */
 void setHeartbeatStateOn()
 {
     heartbeatState = LED_ON;
 }
 
- /**
- * @brief 
- * 
+/**
+ * @brief
+ *
  */
 void updateLedPin()
 {

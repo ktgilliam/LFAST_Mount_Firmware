@@ -1,4 +1,7 @@
+#pragma once
+
 #include <FlexCAN_T4.h>
+
 
 #define CAN3_PIN 35
 #define CAN1_PIN 34

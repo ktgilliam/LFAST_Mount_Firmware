@@ -6,8 +6,8 @@
 ///  @ Description:
 ///
 
-#include "include/CanInterface.h"
-#include "include/debug.h"
+#include "CanInterface.h"
+#include "util/debug.h"
 
 #include <FlexCAN_T4.h>
 #include <stdint.h>

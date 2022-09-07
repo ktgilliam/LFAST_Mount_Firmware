@@ -1,8 +1,10 @@
+#pragma once
+
 #include <cstdint>
 #include <FlexCAN_T4.h>
 
 ///////////////// SENDER ID'S /////////////////
-#define INVALID             0x0
+#define INVALID_ID          0x0
 
 #define CTRL_PC             0xA
 #define PFC_CTRL            0xB
