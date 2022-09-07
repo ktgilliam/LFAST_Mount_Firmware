@@ -1,8 +1,15 @@
+ /// 
+ ///  @ Author: Kevin Gilliam
+ ///  @ Create Time: 2022-09-06 09:36:04
+ ///  @ Modified by: Kevin Gilliam
+ ///  @ Modified time: 2022-09-07 15:30:16
+ ///  @ Description:
+ ///
+
 #include "MainExec.h"
 
 #include <Arduino.h>
 #include <cctype>
-
 
 #include "util/heartbeat.h"
 #include "util/debug.h"
@@ -10,11 +17,9 @@
 #include "SetupExec.h"
 #include "CanTestExec.h"
 
-
-#define MODE_PIN 31
-
-#define MODE_PIN_LOW 0U
-#define MODE_PIN_HIGH 1U
+#define MODE_PIN         31
+#define MODE_PIN_LOW     0U
+#define MODE_PIN_HIGH    1U
 #define MODE_PIN_INVALID 2U
 
 int main(void)

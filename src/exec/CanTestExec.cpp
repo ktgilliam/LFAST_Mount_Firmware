@@ -1,3 +1,11 @@
+ /// 
+ ///  @ Author: Kevin Gilliam
+ ///  @ Create Time: 2022-09-06 09:38:38
+ ///  @ Modified by: Kevin Gilliam
+ ///  @ Modified time: 2022-09-07 15:30:10
+ ///  @ Description:
+ ///
+
 
 #include "CanTestExec.h"
 
@@ -6,7 +14,6 @@
 
 #include "can/CanMessages.h"
 #include "can/CanInterface.h"
-
 
 IntervalTimer testExecTimer;
 CanTestMode testMode;
@@ -54,14 +61,13 @@ void sendTestFrame()
     msg.len = MAX_MESSAGE_LENGTH;
     static int d;
 
-    for (uint8_t i = 0; i < msg.len; i++)
+    for (uint8_t ii = 0; ii < msg.len; ii++)
     {
-        msg.buf[i] = i + 1;
+        msg.buf[ii] = ii + 1;
     }
 
     msg.id = 0x402;
     msg.buf[1] = d++;
-
 
     sendMessage(msg);
 }
@@ -88,9 +94,9 @@ bool printMessageInfo()
     // Serial.print("  EDL: ");
     // Serial.print(msg.edl);
     Serial.print(" DATA: ");
-    for (uint8_t i = 0; i < msg.len; i++)
+    for (uint8_t ii = 0; ii < msg.len; ii++)
     {
-      Serial.print(msg.buf[i]);
+      Serial.print(msg.buf[ii]);
       Serial.print(" ");
     }
     Serial.print("  TS: ");
