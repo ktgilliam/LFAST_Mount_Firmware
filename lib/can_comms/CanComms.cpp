@@ -1,13 +1,14 @@
 ///
 ///  @ Author: Kevin Gilliam
 ///  @ Create Time: 2022-09-07 15:54:35
- ///  @ Modified by: Kevin Gilliam
- ///  @ Modified time: 2022-09-08 12:53:34
+///  @ Modified by: Kevin Gilliam
+///  @ Modified time: 2022-09-08 14:14:51
 ///  @ Description:
 ///
 
 #include <CanComms.h>
 
+#include <Arduino.h>
 #include <FlexCAN_T4.h>
 
 #include <debug.h>
@@ -19,20 +20,22 @@
 
 #include <device.h>
 
-#define TEST_MODE_MSG_PERIOD_US 100000
 // #define TRANSMIT_BAUD_RATE   115200
-#define TRANSMIT_BAUD_RATE      300000 // seems it must be rounded to the 10,000 (which is weird)
-#define MAX_CAN_MESSAGES 0x40 // can be increased if needed
+#define TRANSMIT_BAUD_RATE 300000 // seems it must be rounded to the 10,000 (which is weird)
+#define MAX_CAN_MESSAGES 0x40     // can be increased if needed
 #define MAX_MESSAGE_LENGTH_BYTES 8
 
+#if TEST_MODE_ACTIVE
 #define NUM_TX_MAILBOXES 1
 #define NUM_RX_MAILBOXES 1
+#else
+#define NUM_TX_MAILBOXES 1
+#define NUM_RX_MAILBOXES 1
+#endif
 
 typedef std::array<MsgHandler, MAX_CAN_MESSAGES> MessageList;
 
 static MessageList messageHandlerList;
-IntervalTimer testExecTimer;
-CanTestMode testMode;
 
 typedef FlexCAN_T4<CAN1, RX_SIZE_256, TX_SIZE_16> CanBusConfig;
 CanBusConfig canPort; // can1 port
@@ -48,7 +51,6 @@ void canSniff20(const CAN_message_t &msg);
 void processMessage(uint32_t msgId);
 bool printMessageInfo();
 
-
 ///////////////////////////////////////////////////////////////////////////////////////////////////////
 ////////////////////////// PUBLIC FUNCTIONS ///////////////////////////////////////////////////////////
 ///////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -57,7 +59,7 @@ void initCanComms()
     initCanDevice();
     for (int16_t ii = 0; ii < MAX_CAN_MESSAGES; ii++)
     {
-        registerCanMessageHandler(ii, defaultMessageHandler);
+        messageHandlerList[ii] = defaultMessageHandler;
     }
 }
 
@@ -71,42 +73,42 @@ void initCanDevice()
     canPort.begin();
     canPort.setBaudRate(TRANSMIT_BAUD_RATE); // 500kbps data rate
 
-
     canPort.setMaxMB(NUM_TX_MAILBOXES + NUM_RX_MAILBOXES);
 
     for (int ii = 0; ii < NUM_RX_MAILBOXES; ii++)
     {
         canPort.setMB((FLEXCAN_MAILBOX)ii, RX, STD);
     }
-    for (int ii = NUM_RX_MAILBOXES; ii<(NUM_TX_MAILBOXES + NUM_RX_MAILBOXES); ii++)
+    for (int ii = NUM_RX_MAILBOXES; ii < (NUM_TX_MAILBOXES + NUM_RX_MAILBOXES); ii++)
     {
-        canPort.setMB((FLEXCAN_MAILBOX)ii,TX,STD);
+        canPort.setMB((FLEXCAN_MAILBOX)ii, TX, STD);
     }
 
     canPort.setMBFilter(REJECT_ALL);
     canPort.enableMBInterrupts();
     canPort.onReceive(MB0, processReceived);
-    canPort.onTransmit(processTransmitted);
-    canPort.setMBFilterRange(MB0, CTRL_PC_FILT_BEGIN, CTRL_PC_FILT_END);
-    canPort.mailboxStatus();
+
+#if TEST_MODE_ACTIVE
+    canPort.onTransmit(MB1, processTransmitted);
+#endif
+
+    canPort.setMBFilter(ACCEPT_ALL);
+}
+
+void setRxMailboxFilterRange(uint16_t begin, uint16_t end)
+{
+    // Set up RX filters
+    canPort.setMBFilterRange(MB0, begin, end);
 }
 
 void registerCanMessageHandler(uint16_t canId, MsgHandler fn)
 {
+    // canPort.setMBFilter
     messageHandlerList[canId] = fn;
-}
-
-void setCanTestMode(CanTestMode mode)
-{
-    if (mode == CAN_TEST_MODE_TALKER)
-    {
-        testExecTimer.begin(sendTestFrame, TEST_MODE_MSG_PERIOD_US);
-        // testExecTimer.begin(sendDeadBeef, 50000); // Send frame every 500ms
-    }
-    else
-    {
-        testExecTimer.end();
-    }
+    TEST_SERIAL.print("Registered handler to CAN ID: ");
+    TEST_SERIAL.print(canId, HEX);
+    TEST_SERIAL.print(" at address ");
+    TEST_SERIAL.println((uint32_t)fn, HEX);
 }
 
 void registerCanRxCallback(_MB_ptr callbackFn)
@@ -116,6 +118,7 @@ void registerCanRxCallback(_MB_ptr callbackFn)
 
 void defaultMessageHandler(char *guts, int len)
 {
+    // TOGGLE_DEBUG_PIN();
     std::string msgGuts(guts, len);
     std::stringstream ss;
     ss << "Invalid/Unregistered Message ID. Payload: ";
@@ -125,25 +128,38 @@ void defaultMessageHandler(char *guts, int len)
     }
     ss << std::endl;
     TEST_SERIAL.println(ss.str().c_str());
+    // TOGGLE_DEBUG_PIN();
 }
 
 void processReceived(const CAN_message_t &msg)
 {
     uint32_t id = msg.id;
-    MsgHandler handlerFn = defaultMessageHandler;
-    
+    MsgHandler handlerFn = (MsgHandler)0;
+
     TOGGLE_DEBUG_PIN();
     if (id <= MAX_CAN_MESSAGES)
     {
         handlerFn = messageHandlerList[id];
     }
-    handlerFn((char *)msg.buf, msg.len);
+    if(handlerFn)
+    {
+        handlerFn((char *)msg.buf, msg.len);
+    }
+
+    TOGGLE_DEBUG_PIN();
 }
 
 void processTransmitted(const CAN_message_t &msg)
 {
+    // canSniff20(msg);
     TOGGLE_DEBUG_PIN();
-    canSniff20(msg);
+    TOGGLE_DEBUG_PIN();
+
+    TOGGLE_DEBUG_PIN();
+    TOGGLE_DEBUG_PIN();
+
+    TOGGLE_DEBUG_PIN();
+    TOGGLE_DEBUG_PIN();
 }
 /**
  * @brief
@@ -213,7 +229,11 @@ void updateCanBusEvents()
     // return (canPort.readMB(msg));
 }
 
-void canSendMessage(uint32_t id, char *mBuff, uint8_t len)
+void sendCanBusMessage(const CAN_message_t &msg)
+{
+    canPort.write(msg); // write to can1
+}
+void sendCanBusMessage(uint32_t id, char *mBuff, uint8_t len)
 {
     CAN_message_t msg;
     msg.id = 0x401;
@@ -227,7 +247,6 @@ void canSendMessage(uint32_t id, char *mBuff, uint8_t len)
     msg.id = id;
     canPort.write(msg); // write to can1
 }
-
 
 void canSniff20(const CAN_message_t &msg)
 { // global callback
@@ -258,4 +277,3 @@ void canSniff20(const CAN_message_t &msg)
     }
     TEST_SERIAL.println();
 }
-

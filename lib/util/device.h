@@ -66,7 +66,7 @@
 #define CAN1_PIN 34
 
 #define DEBUG_PIN_1 32
-#define TOGGLE_DEBUG_PIN() digitalWrite(DEBUG_PIN_1, !digitalRead(DEBUG_PIN_1));
+
 
 
 #define TOGGLE_LED_PIN() digitalWrite(LED_PIN, !digitalRead(LED_PIN));

@@ -1,0 +1,3 @@
+
+void enableFakeController();
+void disableFakeController();
