@@ -2,7 +2,7 @@
  ///  @ Author: Kevin Gilliam
  ///  @ Create Time: 2022-09-06 09:36:04
  ///  @ Modified by: Kevin Gilliam
- ///  @ Modified time: 2022-09-07 16:42:26
+ ///  @ Modified time: 2022-09-08 08:12:53
  ///  @ Description:
  ///
 
@@ -13,14 +13,17 @@
 
 #include <heartbeat.h>
 #include <debug.h>
+#include <device.h>
 #include <CanInterface.h>
 #include "SetupExec.h"
 #include "CanTestExec.h"
 
-#define MODE_PIN         31
+
 #define MODE_PIN_LOW     0U
 #define MODE_PIN_HIGH    1U
 #define MODE_PIN_INVALID 2U
+
+void deviceSetup();
 
 int main(void)
 {
@@ -49,4 +52,10 @@ int main(void)
     pingHeartBeat();
   }
   return 0;
+}
+
+void deviceSetup()
+{
+    pinMode(TEST_SERIAL_TX_PIN, OUTPUT);
+    TEST_SERIAL.begin(TEST_SERIAL_BAUD);
 }

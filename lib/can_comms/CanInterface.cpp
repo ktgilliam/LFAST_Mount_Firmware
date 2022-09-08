@@ -59,55 +59,55 @@ void canSendMessage(uint32_t id, char *mBuff, uint8_t len)
 
 void canSniff(const CANFD_message_t &msg)
 {
-    Serial.print("ISR - MB ");
-    Serial.print(msg.mb);
-    Serial.print("  OVERRUN: ");
-    Serial.print(msg.flags.overrun);
-    Serial.print("  LEN: ");
-    Serial.print(msg.len);
-    Serial.print(" EXT: ");
-    Serial.print(msg.flags.extended);
-    Serial.print(" TS: ");
-    Serial.print(msg.timestamp);
-    Serial.print(" ID: ");
-    Serial.print(msg.id, HEX);
-    Serial.print(" Buffer: ");
+    TEST_SERIAL.print("ISR - MB ");
+    TEST_SERIAL.print(msg.mb);
+    TEST_SERIAL.print("  OVERRUN: ");
+    TEST_SERIAL.print(msg.flags.overrun);
+    TEST_SERIAL.print("  LEN: ");
+    TEST_SERIAL.print(msg.len);
+    TEST_SERIAL.print(" EXT: ");
+    TEST_SERIAL.print(msg.flags.extended);
+    TEST_SERIAL.print(" TS: ");
+    TEST_SERIAL.print(msg.timestamp);
+    TEST_SERIAL.print(" ID: ");
+    TEST_SERIAL.print(msg.id, HEX);
+    TEST_SERIAL.print(" Buffer: ");
     for (uint8_t i = 0; i < msg.len; i++)
     {
-        Serial.print(msg.buf[i], HEX);
-        Serial.print(" ");
+        TEST_SERIAL.print(msg.buf[i], HEX);
+        TEST_SERIAL.print(" ");
     }
-    Serial.println();
+    TEST_SERIAL.println();
 }
 
 void canSniff20(const CAN_message_t &msg)
 { // global callback
-    Serial.print("T4: ");
-    Serial.print("MB ");
-    Serial.print(msg.mb);
-    Serial.print(" OVERRUN: ");
-    Serial.print(msg.flags.overrun);
-    Serial.print(" BUS ");
-    Serial.print(msg.bus);
-    Serial.print(" LEN: ");
-    Serial.print(msg.len);
-    Serial.print(" EXT: ");
-    Serial.print(msg.flags.extended);
-    Serial.print(" REMOTE: ");
-    Serial.print(msg.flags.remote);
-    Serial.print(" TS: ");
-    Serial.print(msg.timestamp);
-    Serial.print(" ID: ");
-    Serial.print(msg.id, HEX);
-    Serial.print(" IDHIT: ");
-    Serial.print(msg.idhit);
-    Serial.print(" Buffer: ");
+    TEST_SERIAL.print("T4: ");
+    TEST_SERIAL.print("MB ");
+    TEST_SERIAL.print(msg.mb);
+    TEST_SERIAL.print(" OVERRUN: ");
+    TEST_SERIAL.print(msg.flags.overrun);
+    TEST_SERIAL.print(" BUS ");
+    TEST_SERIAL.print(msg.bus);
+    TEST_SERIAL.print(" LEN: ");
+    TEST_SERIAL.print(msg.len);
+    TEST_SERIAL.print(" EXT: ");
+    TEST_SERIAL.print(msg.flags.extended);
+    TEST_SERIAL.print(" REMOTE: ");
+    TEST_SERIAL.print(msg.flags.remote);
+    TEST_SERIAL.print(" TS: ");
+    TEST_SERIAL.print(msg.timestamp);
+    TEST_SERIAL.print(" ID: ");
+    TEST_SERIAL.print(msg.id, HEX);
+    TEST_SERIAL.print(" IDHIT: ");
+    TEST_SERIAL.print(msg.idhit);
+    TEST_SERIAL.print(" Buffer: ");
     for (uint8_t i = 0; i < msg.len; i++)
     {
-        Serial.print(msg.buf[i], HEX);
-        Serial.print(" ");
+        TEST_SERIAL.print(msg.buf[i], HEX);
+        TEST_SERIAL.print(" ");
     }
-    Serial.println();
+    TEST_SERIAL.println();
 }
 
 void registerCanRxCallback(_MB_ptr callbackFn)

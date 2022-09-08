@@ -15,20 +15,17 @@
 #include <CanMessages.h>
 #include <CanInterface.h>
 #include <heartbeat.h>
-#include <SerialInterface.h>
 #include "CanTestExec.h"
 
 
 void setupExec(void)
 {
     initHeartbeat();
-    initSerialInterfaces();
     initCanInterfaces();
     initializeCanMessages();
 
 
     delay(1000);
 
-    SERIAL_CH(TEST_SERIAL_NO).print("\nTeensy 4.0 Triple CAN test");
     resetHeartbeat();
 }

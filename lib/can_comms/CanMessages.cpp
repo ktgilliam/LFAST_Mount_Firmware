@@ -1,3 +1,11 @@
+ /// 
+ ///  @ Author: Kevin Gilliam
+ ///  @ Create Time: 2022-09-07 15:54:35
+ ///  @ Modified by: Kevin Gilliam
+ ///  @ Modified time: 2022-09-08 08:16:42
+ ///  @ Description:
+ ///
+
 #include "CanMessages.h"
 #include <vector>
 #include <tuple>
@@ -5,7 +13,7 @@
 #include <algorithm>
 #include <sstream>
 #include <FlexCAN_T4.h>
-#include <SerialInterface.h>
+#include <device.h>
 
 void processMessage(uint32_t msgId);
 void invalidMessageHandler(char *guts, int len);
@@ -33,7 +41,7 @@ void defaultMessageHandler(char *guts, int len)
     std::string msgGuts(guts, len);
     std::stringstream ss;
     ss << "No handler registered to this CAN ID." << std::endl;
-    SERIAL_CH(TEST_SERIAL_NO).println(ss.str().c_str());
+    TEST_SERIAL.println(ss.str().c_str());
 }
 
 void invalidMessageHandler(char *guts, int len)
@@ -46,7 +54,7 @@ void invalidMessageHandler(char *guts, int len)
         ss << std::hex << (uint8_t)guts[ii]; 
     }
     ss << std::endl;
-    SERIAL_CH(TEST_SERIAL_NO).println(ss.str().c_str());
+    TEST_SERIAL.println(ss.str().c_str());
 }
 
 void processMessage(const CAN_message_t &msg)
