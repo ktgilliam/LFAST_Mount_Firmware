@@ -2,7 +2,7 @@
  ///  @ Author: Kevin Gilliam
  ///  @ Create Time: 2022-09-06 15:53:51
  ///  @ Modified by: Kevin Gilliam
- ///  @ Modified time: 2022-09-08 08:14:18
+ ///  @ Modified time: 2022-09-08 08:58:21
  ///  @ Description:
  ///
 
@@ -10,19 +10,13 @@
 #include <device.h>
 
 
-// #define DEBUG_PRD 10
-
-#define CONFIG_DEBUG_PIN_1() pinMode(DEBUG_PIN_1, OUTPUT);
-#define SET_DEBUG_PIN_1() digitalWrite(DEBUG_PIN_1, HIGH);
-#define CLR_DEBUG_PIN_1() digitalWrite(DEBUG_PIN_1, LOW);
-
-inline void LedDebugBlink()
+inline void LedDebugBlink(uint32_t prd, uint32_t blinks)
 {
-    for (int ii = 0; ii < 5; ii++)
+    for (uint32_t ii = 0; ii < blinks; ii++)
     {
-        digitalWrite(13, HIGH);
-        delayMicroseconds(1000000);
-        digitalWrite(13, LOW);
-        delayMicroseconds(100000);
+        digitalWrite(LED_PIN, HIGH);
+        delayMicroseconds(prd);
+        digitalWrite(LED_PIN, LOW);
+        delayMicroseconds(prd);
     }
 }

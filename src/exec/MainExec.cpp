@@ -1,10 +1,10 @@
- /// 
- ///  @ Author: Kevin Gilliam
- ///  @ Create Time: 2022-09-06 09:36:04
- ///  @ Modified by: Kevin Gilliam
- ///  @ Modified time: 2022-09-08 08:12:53
- ///  @ Description:
- ///
+///
+///  @ Author: Kevin Gilliam
+///  @ Create Time: 2022-09-06 09:36:04
+///  @ Modified by: Kevin Gilliam
+///  @ Modified time: 2022-09-08 12:13:45
+///  @ Description:
+///
 
 #include "MainExec.h"
 
@@ -14,48 +14,58 @@
 #include <heartbeat.h>
 #include <debug.h>
 #include <device.h>
-#include <CanInterface.h>
-#include "SetupExec.h"
-#include "CanTestExec.h"
+#include <CanComms.h>
 
-
-#define MODE_PIN_LOW     0U
-#define MODE_PIN_HIGH    1U
+#define MODE_PIN_LOW 0U
+#define MODE_PIN_HIGH 1U
 #define MODE_PIN_INVALID 2U
 
-void deviceSetup();
-
-int main(void)
-{
-  setupExec();
-  pinMode(MODE_PIN, INPUT);
-  uint8_t modePinState;
-  uint8_t prevModePinState = MODE_PIN_INVALID;
-  
-  while (1)
-  {
-    modePinState = digitalRead(MODE_PIN);
-    if (modePinState != prevModePinState)
-    {
-      if (modePinState == HIGH)
-      {
-        initCanTestExec(CAN_TEST_MODE_TALKER);
-        setHeartBeatPeriod(600000);
-      }
-      else
-      {
-        initCanTestExec(CAN_TEST_MODE_LISTENER);
-        setHeartBeatPeriod(2400000);
-      }
-      prevModePinState = modePinState;
-    }
-    pingHeartBeat();
-  }
-  return 0;
-}
-
+/**
+ * @brief configure pins and test interfaces
+ *
+ */
 void deviceSetup()
 {
-    pinMode(TEST_SERIAL_TX_PIN, OUTPUT);
-    TEST_SERIAL.begin(TEST_SERIAL_BAUD);
+  pinMode(LED_PIN, OUTPUT);
+  pinMode(MODE_PIN, INPUT);
+  pinMode(DEBUG_PIN_1, OUTPUT);
+  pinMode(TEST_SERIAL_TX_PIN, OUTPUT);
+
+  digitalWrite(DEBUG_PIN_1, LOW);
+
+  TEST_SERIAL.begin(TEST_SERIAL_BAUD);
+  delay(500);
+  TEST_SERIAL.println("Device Setup Complete.");
+}
+
+/**
+ * @brief call init functions for the modules used
+ *
+ */
+void setup(void)
+{
+  deviceSetup();
+  initHeartbeat();
+  resetHeartbeat();
+  initCanComms();
+
+  uint8_t modePinState = digitalRead(MODE_PIN);
+  if (modePinState == HIGH)
+  {
+    setCanTestMode(CAN_TEST_MODE_TALKER);
+    setHeartBeatPeriod(100000);
+    TEST_SERIAL.println("CAN Test Mode: Talker. ");
+  }
+  else
+  {
+    setCanTestMode(CAN_TEST_MODE_LISTENER);
+    setHeartBeatPeriod(400000);
+    TEST_SERIAL.println("CAN Test Mode: Listener. ");
+  }
+}
+
+void loop(void)
+{
+    // pingHeartBeat();
+    updateCanBusEvents();
 }
