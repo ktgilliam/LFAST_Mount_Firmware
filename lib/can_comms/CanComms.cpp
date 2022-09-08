@@ -2,7 +2,7 @@
 ///  @ Author: Kevin Gilliam
 ///  @ Create Time: 2022-09-07 15:54:35
  ///  @ Modified by: Kevin Gilliam
- ///  @ Modified time: 2022-09-08 12:52:51
+ ///  @ Modified time: 2022-09-08 12:53:34
 ///  @ Description:
 ///
 
@@ -83,11 +83,11 @@ void initCanDevice()
         canPort.setMB((FLEXCAN_MAILBOX)ii,TX,STD);
     }
 
-    // canPort.setMBFilter(REJECT_ALL);
+    canPort.setMBFilter(REJECT_ALL);
     canPort.enableMBInterrupts();
     canPort.onReceive(MB0, processReceived);
     canPort.onTransmit(processTransmitted);
-    // canPort.setMBFilterRange(MB0, CTRL_PC_FILT_BEGIN, CTRL_PC_FILT_END);
+    canPort.setMBFilterRange(MB0, CTRL_PC_FILT_BEGIN, CTRL_PC_FILT_END);
     canPort.mailboxStatus();
 }
 
