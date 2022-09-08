@@ -2,15 +2,14 @@
  ///  @ Author: Kevin Gilliam
  ///  @ Create Time: 2022-09-06 12:05:44
  ///  @ Modified by: Kevin Gilliam
- ///  @ Modified time: 2022-09-07 15:30:33
+ ///  @ Modified time: 2022-09-08 08:13:58
  ///  @ Description:
  ///
 
 #include "heartbeat.h"
 #include <cctype>
-
-#include <Arduino.h>
 #include <cstdint>
+#include <device.h>
 
 enum ledState
 {
@@ -18,7 +17,6 @@ enum ledState
     LED_ON = HIGH
 };
 
-int ledPin = 13;
 static uint32_t cnt = 0;
 static ledState heartbeatState = LED_OFF;
 uint32_t heartbeatPeriodCnts = 1000;
@@ -35,7 +33,7 @@ void updateLedPin();
  */
 void initHeartbeat()
 {
-    pinMode(ledPin, OUTPUT);
+    pinMode(LED_PIN, OUTPUT);
     setHeartbeatStateOn();
     updateLedPin();
 }
@@ -119,5 +117,5 @@ void setHeartbeatStateOn()
  */
 void updateLedPin()
 {
-    digitalWrite(ledPin, heartbeatState);
+    digitalWrite(LED_PIN, heartbeatState);
 }

@@ -2,14 +2,14 @@
  ///  @ Author: Kevin Gilliam
  ///  @ Create Time: 2022-09-06 15:53:51
  ///  @ Modified by: Kevin Gilliam
- ///  @ Modified time: 2022-09-07 15:30:30
+ ///  @ Modified time: 2022-09-08 08:14:18
  ///  @ Description:
  ///
 
 #pragma once
-#include <Arduino.h>
+#include <device.h>
 
-#define DEBUG_PIN_1 32
+
 // #define DEBUG_PRD 10
 
 #define CONFIG_DEBUG_PIN_1() pinMode(DEBUG_PIN_1, OUTPUT);
