@@ -14,7 +14,8 @@
 #include <heartbeat.h>
 #include <debug.h>
 #include <device.h>
-#include <CanComms.h>
+#include <NetComms.h>
+
 
 #define MODE_PIN_LOW 0U
 #define MODE_PIN_HIGH 1U
@@ -34,7 +35,19 @@ void deviceSetup()
   digitalWrite(DEBUG_PIN_1, LOW);
 
   TEST_SERIAL.begin(TEST_SERIAL_BAUD);
+
+  bool enetGood = initNetComms();
   delay(500);
+
+  if (!enetGood)
+  {
+      TEST_SERIAL.println("Device Setup Failed.");
+      while(true)
+      {
+        ;;
+      }
+  }
+
   TEST_SERIAL.println("Device Setup Complete.");
 }
 
@@ -47,25 +60,27 @@ void setup(void)
   deviceSetup();
   initHeartbeat();
   resetHeartbeat();
-  initCanComms();
 
   uint8_t modePinState = digitalRead(MODE_PIN);
   if (modePinState == HIGH)
   {
-    setCanTestMode(CAN_TEST_MODE_TALKER);
     setHeartBeatPeriod(100000);
-    TEST_SERIAL.println("CAN Test Mode: Talker. ");
+    // TEST_SERIAL.println("CAN Test Mode: Talker. ");
   }
   else
   {
-    setCanTestMode(CAN_TEST_MODE_LISTENER);
     setHeartBeatPeriod(400000);
-    TEST_SERIAL.println("CAN Test Mode: Listener. ");
+    // TEST_SERIAL.println("CAN Test Mode: Listener. ");
   }
 }
 
 void loop(void)
 {
-    // pingHeartBeat();
-    updateCanBusEvents();
+  // pingHeartBeat();
+  ;
+  ;
+    // listen for incoming Ethernet connections:
+  listenForEthernetClients();
 }
+
+

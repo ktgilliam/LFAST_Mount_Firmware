@@ -1,0 +1,5 @@
+https://forum.pjrc.com/threads/60857-T4-1-Ethernet-Library
+
+sudo apt install build-essential devscripts debhelper fakeroot cdbs software-properties-common cmake
+sudo add-apt-repository ppa:mutlaqja/ppa
+sudo apt install libindi-dev libnova-dev libz-dev libgsl-dev
