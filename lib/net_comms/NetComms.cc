@@ -209,7 +209,7 @@ void checkForNewMessages()
             {
                 char c = client.read();
 
-                if ((c == '\n'))// || (c == '#'))
+                if (c == '\n')
                 {
                     eom = true;
                 }
@@ -220,51 +220,27 @@ void checkForNewMessages()
 
                 if (eom)
                 {
-                    std::string msg((char *)readBuff);
+                    std::string recvStr((char *)readBuff);
                     TEST_SERIAL.print("\nMSG: ");
                     TEST_SERIAL.println((char *)readBuff);
-                    TEST_SERIAL.println("Replied 1#");
+                    // TEST_SERIAL.println("Replied 1#");
                     client.println("1#");
+
+                    std::regex id_regex("#\\d+");
+                    auto msg_begin =
+                        std::sregex_iterator(recvStr.begin(), recvStr.end(), id_regex);
+                    auto msg_end = std::sregex_iterator();
+                    for (std::sregex_iterator i = msg_begin; i != msg_end; ++i)
+                    {
+                        std::smatch match = *i;
+                        std::string id_str = match.str().substr(1,std::string::npos);
+                        unsigned int id = atoi(id_str.c_str());
+                        TEST_SERIAL.print("Found ID: ");
+                        TEST_SERIAL.println(id);
+
+                    }
                     break;
-                    // bytesRead = 0;
-                    // memset(readBuff, 0, RX_BUFF_SIZE);
-                    
                 }
-                // int bytesRead = client.read(readBuff, 64);
-                // if (bytesRead)
-                // {
-                // readBuff[bytesRead + 1] = '\n';
-
-                // std::string recvStr((char *)readBuff);
-                // TEST_SERIAL.print(recvStr.c_str());
-                // TEST_SERIAL.println(";\n");
-
-                // std::regex id_regex("#\\d+");
-                // if (std::regex_search(recvStr, id_regex))
-                // {
-                //     std::cout << "Text contains the phrase 'regular expressions'\n";
-                // }
-
-                // auto msg_begin =
-                //     std::sregex_iterator(recvStr.begin(), recvStr.end(), id_regex);
-                // auto msg_end = std::sregex_iterator();
-                // for (std::sregex_iterator i = msg_begin; i != msg_end; ++i)
-                // {
-                //     std::smatch match = *i;
-                //     std::string match_str = match.str();
-
-                //     // TEST_SERIAL.print("Found ID: ");
-                //     // TEST_SERIAL.println(match_str.c_str());
-                // }
-                // TEST_SERIAL.println((char *)readBuff);
-
-                // }
-                // else
-                // {
-                //     TEST_SERIAL.println("BAD ACK#0");
-                //     client.println("BAD ACK#0");
-                // }
-                
             }
         }
         delay(1);
