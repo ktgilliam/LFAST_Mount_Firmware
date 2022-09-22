@@ -80,7 +80,7 @@ void loop(void)
   ;
   ;
     // listen for incoming Ethernet connections:
-  listenForEthernetClients();
+  checkForNewMessages();
 }
 
 

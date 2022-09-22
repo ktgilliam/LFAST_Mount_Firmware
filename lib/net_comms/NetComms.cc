@@ -20,6 +20,10 @@
 
 #include <device.h>
 
+#include <iterator>
+#include <string>
+#include <regex>
+
 #define TEST_MODE_MSG_PERIOD_US 100000
 // #define TRANSMIT_BAUD_RATE   115200
 #define TRANSMIT_BAUD_RATE 300000 // seems it must be rounded to the 10,000 (which is weird)
@@ -188,32 +192,84 @@ void sendDeadBeef()
     // canPort.write(msg); // write to can1
 }
 
-void listenForEthernetClients()
+void checkForNewMessages()
 {
     // listen for incoming clients
     EthernetClient client = server.available();
-
+#define RX_BUFF_SIZE 64
     if (client)
     {
-        TEST_SERIAL.println("Got a client");
-        // while (client.connected())
-        // {
-
-        uint8_t readBuff[64];
-        if (client.available())
+        uint8_t readBuff[RX_BUFF_SIZE];
+        memset(readBuff, 0, RX_BUFF_SIZE);
+        unsigned int bytesRead = 0;
+        bool eom = false;
+        while (client.connected())
         {
-            int bytesRead = client.read(readBuff, 64);
-            if (bytesRead)
+            if (client.available())
             {
-                TEST_SERIAL.println((char*)readBuff);
-                client.println("1#Stuff happening");
+                char c = client.read();
+
+                if ((c == '\n'))// || (c == '#'))
+                {
+                    eom = true;
+                }
+                else
+                {
+                    readBuff[bytesRead++] = c;
+                }
+
+                if (eom)
+                {
+                    std::string msg((char *)readBuff);
+                    TEST_SERIAL.print("\nMSG: ");
+                    TEST_SERIAL.println((char *)readBuff);
+                    TEST_SERIAL.println("Replied 1#");
+                    client.println("1#");
+                    break;
+                    // bytesRead = 0;
+                    // memset(readBuff, 0, RX_BUFF_SIZE);
+                    
+                }
+                // int bytesRead = client.read(readBuff, 64);
+                // if (bytesRead)
+                // {
+                // readBuff[bytesRead + 1] = '\n';
+
+                // std::string recvStr((char *)readBuff);
+                // TEST_SERIAL.print(recvStr.c_str());
+                // TEST_SERIAL.println(";\n");
+
+                // std::regex id_regex("#\\d+");
+                // if (std::regex_search(recvStr, id_regex))
+                // {
+                //     std::cout << "Text contains the phrase 'regular expressions'\n";
+                // }
+
+                // auto msg_begin =
+                //     std::sregex_iterator(recvStr.begin(), recvStr.end(), id_regex);
+                // auto msg_end = std::sregex_iterator();
+                // for (std::sregex_iterator i = msg_begin; i != msg_end; ++i)
+                // {
+                //     std::smatch match = *i;
+                //     std::string match_str = match.str();
+
+                //     // TEST_SERIAL.print("Found ID: ");
+                //     // TEST_SERIAL.println(match_str.c_str());
+                // }
+                // TEST_SERIAL.println((char *)readBuff);
+
+                // }
+                // else
+                // {
+                //     TEST_SERIAL.println("BAD ACK#0");
+                //     client.println("BAD ACK#0");
+                // }
+                
             }
         }
-        // }
-        // give the web browser time to receive the data
         delay(1);
         // close the connection:
-        client.stop();
+        // client.stop();
     }
 }
 

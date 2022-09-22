@@ -49,5 +49,5 @@ void registerNetMessageHandler(uint16_t msgId, MsgHandler fn);
 void netSendMessage(uint32_t id, char *mBuff, uint8_t len);
 
 void sendTestFrame();
-void listenForEthernetClients();
+void checkForNewMessages();
 void checkForNewClientData();
