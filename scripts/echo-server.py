@@ -5,7 +5,9 @@ import socket
 # HOST = "127.0.0.1"  # Standard loopback interface address (localhost)
 # PORT = 65432  # Port to listen on (non-privileged ports are > 1023)
 
-HOST = "192.168.190.101"
+# HOST = "192.168.190.101"
+HOST = "localhost"
+# HOST = "192.168.121.177"
 PORT = 4400  # The port used by the server
 
 print("Attempting to connect.")

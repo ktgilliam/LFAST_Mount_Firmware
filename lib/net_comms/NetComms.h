@@ -42,7 +42,7 @@ typedef struct
 } NetMessage_t;
 
 ///////////////// FUNCTIONS /////////////////
-void initNetComms();
+bool initNetComms();
 
 void registerNetMessageHandler(uint16_t msgId, MsgHandler fn);
 

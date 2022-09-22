@@ -16,6 +16,7 @@
 #include <iostream>
 #include <algorithm>
 #include <sstream>
+#include <string>
 
 #include <device.h>
 
@@ -31,15 +32,16 @@
 // byte mac[] = {0x04, 0xe9, 0xBE, 0xEF, 0xFE, 0xED};
 // assign an IP address for the controller:
 byte mac[] = {0xDE, 0xAD, 0xBE, 0xEF, 0xFE, 0xED};
-IPAddress ip(192, 168, 1, 177);
+IPAddress ip(192, 168, 121, 177);
+uint32_t port = 4400;
 // IPAddress ip(10, 0, 0, 177);
-IPAddress myDns(192, 168, 1, 1);
-IPAddress gateway(192, 168, 190, 1);
-IPAddress subnet(255, 255, 255, 0);
+// IPAddress myDns(192, 168, 1, 1);
+// IPAddress gateway(192, 168, 190, 1);
+// IPAddress subnet(255, 255, 255, 0);
 
 // Initialize the Ethernet server library
 // with the IP address and port you want to use
-EthernetServer server(4400);
+EthernetServer server(port);
 EthernetClient clients[MAX_CLIENTS];
 
 typedef std::array<MsgHandler, MAX_CTRL_MESSAGES> MessageList;
@@ -51,12 +53,12 @@ void defaultMessageHandler(char *guts, int len);
 
 void checkForNewClientConnection();
 void stopDisconnectedClients();
-void teensyMAC(uint8_t *mac);
+void getTeensyMacAddr(uint8_t *mac);
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////////
 ////////////////////////// PUBLIC FUNCTIONS ///////////////////////////////////////////////////////////
 ///////////////////////////////////////////////////////////////////////////////////////////////////////
-void initNetComms()
+bool initNetComms()
 {
     if (initNetDevice())
     {
@@ -67,9 +69,9 @@ void initNetComms()
     }
     else
     {
-        while (1)
-            ;
+        return false;
     }
+    return true;
 }
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -77,47 +79,38 @@ void initNetComms()
 ///////////////////////////////////////////////////////////////////////////////////////////////////////
 bool initNetDevice()
 {
+    bool initResult = true;
+
     TEST_SERIAL.println("\nInitializing Ethernet... ");
-    teensyMAC(mac);
-    // Ethernet.MACAddress(mac); 
-    TEST_SERIAL.printf("MAC: %02x:%02x:%02x:%02x:%02x:%02x\n", mac[0], mac[1], mac[2], mac[3], mac[4], mac[5]);
+    getTeensyMacAddr(mac);
+    // Ethernet.MACAddress(mac);
+    TEST_SERIAL.printf("MAC: %02x:%02x:%02x:%02x:%02x:%02x\n",
+                       mac[0], mac[1], mac[2], mac[3], mac[4], mac[5]);
+    TEST_SERIAL.println("");
     // initialize the Ethernet device
     Ethernet.begin(mac, ip);
-    // Ethernet.begin();
-    
-    // Ethernet.begin(mac, ip, myDns, gateway, subnet);
-    if (1)
-    {
-        IPAddress myIP = Ethernet.localIP();
-        TEST_SERIAL.printf("IP Address %u.%u.%u.%u\n", myIP[0], myIP[1], myIP[2], myIP[3]);
-    }
-    else
-    {
-        TEST_SERIAL.println("\nFailed to configure Ethernet using DHCP");
-        return false;
-    }
+    // Ethernet.begin(mac, ip, myDns, gateway, subnet)
 
-    TEST_SERIAL.println("Checking PHY...");
+    // TEST_SERIAL.println("Checking PHY...");
     // Check for Ethernet hardware present
     if (Ethernet.hardwareStatus() == EthernetNoHardware)
     {
-        TEST_SERIAL.println("Ethernet shield was not found.  Sorry, can't run without hardware. :(");
-        while (true)
-        {
-            delay(1); // do nothing, no point running without Ethernet hardware
-        }
+        TEST_SERIAL.println("Ethernet PHY was not found.  Sorry, can't run without hardware. :(");
+        initResult = false;
     }
 
     TEST_SERIAL.println("Checking Link...");
     if (Ethernet.linkStatus() == LinkOFF)
     {
         TEST_SERIAL.println("Ethernet cable is not connected.");
+        initResult = false;
     }
 
-    TEST_SERIAL.println("Start listening...");
     // start listening for clients
-    server.begin();
-    return false;
+    server.begin(port);
+    TEST_SERIAL.print("Start listening... Local IP: ");
+    TEST_SERIAL.println(Ethernet.localIP());
+    return initResult;
 }
 
 void registerNetMessageHandler(uint16_t msgId, MsgHandler fn)
@@ -199,38 +192,24 @@ void listenForEthernetClients()
 {
     // listen for incoming clients
     EthernetClient client = server.available();
+
     if (client)
     {
         TEST_SERIAL.println("Got a client");
-        // an http request ends with a blank line
-        boolean currentLineIsBlank = true;
-        while (client.connected())
-        {
-            if (client.available())
-            {
-                char c = client.read();
-                // if you've gotten to the end of the line (received a newline
-                // character) and the line is blank, the http request has ended,
-                // so you can send a reply
-                if (c == '\n' && currentLineIsBlank)
-                {
-                    // send a standard http response header
-                    client.println("Stuff happening");
-                    break;
-                }
+        // while (client.connected())
+        // {
 
-                if (c == '\n')
-                {
-                    // you're starting a new line
-                    currentLineIsBlank = true;
-                }
-                else if (c != '\r')
-                {
-                    // you've gotten a character on the current line
-                    currentLineIsBlank = false;
-                }
+        uint8_t readBuff[64];
+        if (client.available())
+        {
+            int bytesRead = client.read(readBuff, 64);
+            if (bytesRead)
+            {
+                TEST_SERIAL.println((char*)readBuff);
+                client.println("1#Stuff happening");
             }
         }
+        // }
         // give the web browser time to receive the data
         delay(1);
         // close the connection:
@@ -300,7 +279,7 @@ void stopDisconnectedClients()
     }
 }
 
-void teensyMAC(uint8_t *mac)
+void getTeensyMacAddr(uint8_t *mac)
 {
     for (uint8_t by = 0; by < 2; by++)
         mac[by] = (HW_OCOTP_MAC1 >> ((1 - by) * 8)) & 0xFF;

@@ -36,10 +36,18 @@ void deviceSetup()
 
   TEST_SERIAL.begin(TEST_SERIAL_BAUD);
 
-  initNetComms();
-
-
+  bool enetGood = initNetComms();
   delay(500);
+
+  if (!enetGood)
+  {
+      TEST_SERIAL.println("Device Setup Failed.");
+      while(true)
+      {
+        ;;
+      }
+  }
+
   TEST_SERIAL.println("Device Setup Complete.");
 }
 
