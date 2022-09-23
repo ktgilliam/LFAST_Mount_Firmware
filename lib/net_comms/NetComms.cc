@@ -96,7 +96,6 @@ bool initNetDevice()
     Ethernet.begin(mac, ip);
     // Ethernet.begin(mac, ip, myDns, gateway, subnet)
 
-    // TEST_SERIAL.println("Checking PHY...");
     // Check for Ethernet hardware present
     if (Ethernet.hardwareStatus() == EthernetNoHardware)
     {
