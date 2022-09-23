@@ -23,6 +23,7 @@
 #include <iterator>
 #include <string>
 #include <regex>
+#include <vector>
 
 #define TEST_MODE_MSG_PERIOD_US 100000
 // #define TRANSMIT_BAUD_RATE   115200
@@ -226,18 +227,33 @@ void checkForNewMessages()
                     // TEST_SERIAL.println("Replied 1#");
                     client.println("1#");
 
-                    std::regex id_regex("#\\d+");
-                    auto msg_begin =
-                        std::sregex_iterator(recvStr.begin(), recvStr.end(), id_regex);
-                    auto msg_end = std::sregex_iterator();
-                    for (std::sregex_iterator i = msg_begin; i != msg_end; ++i)
+                    std::regex msg_regex("(\\w+)#(\\d+)");
+                    std::smatch matches;
+                    if (std::regex_search(recvStr, matches, msg_regex))
                     {
-                        std::smatch match = *i;
-                        std::string id_str = match.str().substr(1,std::string::npos);
-                        unsigned int id = atoi(id_str.c_str());
-                        TEST_SERIAL.print("Found ID: ");
-                        TEST_SERIAL.println(id);
+                        std::vector<std::string> matchStrs;
+                        // Note: First match is the whole thing, so discard it
+                        for (size_t ii = 1; ii < matches.size(); ++ii)
+                        {
+                            // matchStrs.insert(matchStrs.cbegin(), matches[ii].str());
+                            matchStrs.push_back(matches[ii].str());
+                        }
 
+                        std::string id_str = matchStrs.back();
+                        matchStrs.pop_back();
+                        int idVal = std::atoi(id_str.c_str());
+                        TEST_SERIAL.print("ID: ");
+                        TEST_SERIAL.println(idVal);
+
+                        int cnt = 0;
+                        std::vector<std::string>::iterator itr;
+                        for (itr = matchStrs.begin(); itr != matchStrs.end(); ++itr)
+                        {
+                            TEST_SERIAL.print("Arg ");
+                            TEST_SERIAL.print(cnt);
+                            TEST_SERIAL.print(": ");
+                            TEST_SERIAL.println((*itr).c_str());
+                        }
                     }
                     break;
                 }
