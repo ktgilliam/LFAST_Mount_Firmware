@@ -84,4 +84,5 @@ void loop(void)
 
   // listen for incoming Ethernet connections:
   commsService->checkForNewClientData();
+  commsService->processReceived();
 }

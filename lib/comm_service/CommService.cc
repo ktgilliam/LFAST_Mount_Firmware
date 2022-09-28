@@ -3,6 +3,7 @@
 
 #include <array>
 #include <sstream>
+#include <iterator>
 
 #include <debug.h>
 #include <device.h>
@@ -41,22 +42,22 @@ void CommsService::errorMessageHandler(CommsMessage &msg)
     TEST_SERIAL.println(ss.str().c_str());
 }
 
-void CommsService::processReceived(CommsMessage &msg)
+void CommsService::processReceived()
 {
-    uint32_t id = msg.id;
-    MsgHandlerFn handlerFn = defaultMessageHandler;
-
-    TOGGLE_DEBUG_PIN();
-    if (id <= MAX_CTRL_MESSAGES)
+    std::vector<CommsMessage>::iterator itr;
+    for (itr = messageQueue.begin(); itr != messageQueue.end();)
     {
-        handlerFn = messageHandlerList[id];
+        CommsMessage msg = (*itr);
+
+        uint32_t id = msg.id;
+        MsgHandlerFn handlerFn = defaultMessageHandler;
+
+        TOGGLE_DEBUG_PIN();
+        if (id <= MAX_CTRL_MESSAGES)
+        {
+            handlerFn = messageHandlerList[id];
+        }
+        handlerFn(msg);
+        messageQueue.erase(itr);
     }
-    handlerFn(msg);
-}
-
-
-void CommsService::printMessageInfo(CommsMessage &msg)
-{
-    // TODO
-    // TEST_SERIAL.printf("%s", msg.buf);
 }

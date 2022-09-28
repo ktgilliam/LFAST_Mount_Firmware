@@ -202,11 +202,13 @@ void EthernetCommsService::parseReceivedData(char *rxBuff)
     uint16_t idVal = std::atoi(argStrs.back().c_str());
     argStrs.pop_back();
 
+    // CommsMessage *newMsg = new CommsMessage(idVal);
     CommsMessage newMsg(idVal);
-
     for (uint16_t ii = 0; ii < argStrs.size(); ii++)
     {
         double argDbl = std::atof(argStrs.at(ii).c_str());
         newMsg.args.push_back(argDbl);
     }
+
+    this->messageQueue.push_back(newMsg);
 }

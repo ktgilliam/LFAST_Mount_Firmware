@@ -45,7 +45,7 @@ struct CommsMessage
     CommsMessage(uint16_t _msgId) : id(_msgId) {}
     uint16_t id;
     std::vector<double> args;
-    void printMsg()
+    void printMessageInfo()
     { 
         TEST_SERIAL.printf("%d:\t", id);
         for(uint16_t ii = 0; ii < args.size(); ii++)
@@ -64,7 +64,7 @@ protected:
 
     static void defaultMessageHandler(CommsMessage &dontCare);
     void errorMessageHandler(CommsMessage &msg);
-    void processReceived(CommsMessage &msg);
+
     bool commsServiceStatus;
     std::vector<CommsMessage> messageQueue;
     
@@ -77,9 +77,8 @@ public:
     CommsService();
     virtual ~CommsService() {}
 
+    void processReceived();
     void registerMessageHandler(uint16_t msgId, MsgHandlerFn fn);
-    void printMessageInfo(CommsMessage &msg);
-
     virtual bool Status() { return commsServiceStatus; };
     virtual bool checkForNewMessages() { return false; };
     virtual bool checkForNewClients() { return false; };
