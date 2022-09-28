@@ -16,10 +16,11 @@
 #include <device.h>
 #include <NetComms.h>
 
-
 #define MODE_PIN_LOW 0U
 #define MODE_PIN_HIGH 1U
 #define MODE_PIN_INVALID 2U
+
+EthernetCommsService *commsService;
 
 /**
  * @brief configure pins and test interfaces
@@ -36,16 +37,16 @@ void deviceSetup()
 
   TEST_SERIAL.begin(TEST_SERIAL_BAUD);
 
-  bool enetGood = initNetComms();
+  commsService = new EthernetCommsService();
   delay(500);
-
-  if (!enetGood)
+  if (!commsService->Status())
   {
-      TEST_SERIAL.println("Device Setup Failed.");
-      while(true)
-      {
-        ;;
-      }
+    TEST_SERIAL.println("Device Setup Failed.");
+    while (true)
+    {
+      ;
+      ;
+    }
   }
 
   TEST_SERIAL.println("Device Setup Complete.");
@@ -57,10 +58,11 @@ void deviceSetup()
  */
 void setup(void)
 {
+
   deviceSetup();
+
   initHeartbeat();
   resetHeartbeat();
-
   uint8_t modePinState = digitalRead(MODE_PIN);
   if (modePinState == HIGH)
   {
@@ -79,8 +81,7 @@ void loop(void)
   // pingHeartBeat();
   ;
   ;
-    // listen for incoming Ethernet connections:
-  checkForNewMessages();
+
+  // listen for incoming Ethernet connections:
+  commsService->checkForNewClientData();
 }
-
-
