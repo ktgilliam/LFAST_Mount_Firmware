@@ -194,11 +194,9 @@ void EthernetCommsService::sendMessage(CommsMessage &msg)
 
 void EthernetCommsService::processReceived()
 {
-    // std::vector<CommsMessage*>::iterator itr;
-    for (auto itr = messageQueue.begin(); itr != messageQueue.end();)
+    for (auto itr = netMessageQueue.begin(); itr != netMessageQueue.end();)
     {
-        CommsMessage * basePtr = (*itr);
-        NetCommsMessage *msg = dynamic_cast<NetCommsMessage*>(basePtr);
+        NetCommsMessage *msg = (*itr);
 
         uint32_t id = msg->id;
         MsgHandlerFn handlerFn = defaultMessageHandler;
@@ -210,6 +208,6 @@ void EthernetCommsService::processReceived()
         }
         handlerFn(*msg);
         delete msg;
-        messageQueue.erase(itr);
+        netMessageQueue.erase(itr);
     }
 }

@@ -26,6 +26,7 @@ private:
     static IPAddress ip;
     static EthernetServer server;
     std::vector<EthernetClient> clients;
+        std::vector<NetCommsMessage *> netMessageQueue;
 
 public:
     EthernetCommsService();
@@ -34,6 +35,7 @@ public:
 
     bool checkForNewEnetMessages();
     void checkForNewClientData();
+
 
     // Overloaded functions:
 
