@@ -1,0 +1,3 @@
+
+void initMountControl();
+void serviceMountControl();

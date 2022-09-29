@@ -4,6 +4,9 @@
 #include <array>
 #include <sstream>
 #include <iterator>
+#include <cstring>
+#include <string>
+#include <cstdlib>
 
 #include <debug.h>
 #include <device.h>
@@ -42,22 +45,43 @@ void CommsService::errorMessageHandler(CommsMessage &msg)
     TEST_SERIAL.println(ss.str().c_str());
 }
 
-void CommsService::processReceived()
+
+void CommsMessage::parseReceivedData(char *rxBuff)
 {
-    std::vector<CommsMessage>::iterator itr;
-    for (itr = messageQueue.begin(); itr != messageQueue.end();)
+    std::vector<std::string> argStrs;
+    char *token = std::strtok(rxBuff, "#;");
+
+    while (token != NULL)
     {
-        CommsMessage msg = (*itr);
+        argStrs.push_back(std::string(token));
+        token = strtok(NULL, "#;");
+    }
 
-        uint32_t id = msg.id;
-        MsgHandlerFn handlerFn = defaultMessageHandler;
+    this->id = std::atoi(argStrs.back().c_str());
+    argStrs.pop_back();
 
-        TOGGLE_DEBUG_PIN();
-        if (id <= MAX_CTRL_MESSAGES)
-        {
-            handlerFn = messageHandlerList[id];
-        }
-        handlerFn(msg);
-        messageQueue.erase(itr);
+    for (uint16_t ii = 0; ii < argStrs.size(); ii++)
+    {
+        double argDbl = std::atof(argStrs.at(ii).c_str());
+        this->args.push_back(argDbl);
     }
 }
+
+    void CommsMessage::printMessageInfo()
+    {
+        TEST_SERIAL.printf("%d:\t", id);
+        for (uint16_t ii = 0; ii < args.size(); ii++)
+        {
+            TEST_SERIAL.printf("%4.2f:\t", args.at(ii));
+        }
+    }
+    std::string CommsMessage::getMessageStr()
+    {
+        std::stringstream ss;
+        for (uint16_t ii = 0; ii < args.size(); ii++)
+        {
+            ss << this->args.at(ii) << ";";
+        }
+        ss << std::hex << this->id << std::endl;
+        return ss.str();
+    }

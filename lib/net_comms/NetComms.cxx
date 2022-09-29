@@ -18,7 +18,7 @@
 #include <algorithm>
 #include <sstream>
 #include <string>
-#include <cstring>
+
 #include <vector>
 #include <iterator>
 // #include <regex>
@@ -30,15 +30,12 @@
 // #define TRANSMIT_BAUD_RATE 300000 // seems it must be rounded to the 10,000 (which is weird)
 
 #define MAX_MESSAGE_LENGTH_BYTES 64
-#define MAX_CLIENTS 8
 
 // assign a MAC address for the Ethernet controller.
 // fill in your address here:
 // byte mac[] = {0x04, 0xe9, 0xBE, 0xEF, 0xFE, 0xED};
 // assign an IP address for the controller:
-byte mac[] = {0xDE, 0xAD, 0xBE, 0xEF, 0xFE, 0xED};
-IPAddress ip(192, 168, 121, 177);
-uint32_t port = 4400;
+
 // IPAddress ip(10, 0, 0, 177);
 // IPAddress myDns(192, 168, 1, 1);
 // IPAddress gateway(192, 168, 190, 1);
@@ -46,11 +43,13 @@ uint32_t port = 4400;
 
 // Initialize the Ethernet server library
 // with the IP address and port you want to use
-EthernetServer server(port);
-EthernetClient clients[MAX_CLIENTS];
 
 void stopDisconnectedClients();
 void getTeensyMacAddr(uint8_t *mac);
+
+IPAddress EthernetCommsService::ip = IPAddress(192, 168, 121, 177);
+EthernetServer EthernetCommsService::server = EthernetServer(PORT);
+byte EthernetCommsService::mac[6] = {0xDE, 0xAD, 0xBE, 0xEF, 0xFE, 0xED};
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////////
 ////////////////////////// PUBLIC FUNCTIONS ///////////////////////////////////////////////////////////
@@ -84,7 +83,7 @@ EthernetCommsService::EthernetCommsService()
     }
 
     // start listening for clients
-    server.begin(port);
+    server.begin(PORT);
     TEST_SERIAL.print("Start listening... Local IP: ");
     TEST_SERIAL.println(Ethernet.localIP());
     this->commsServiceStatus = initResult;
@@ -99,17 +98,14 @@ bool EthernetCommsService::checkForNewClients()
     if (newClient)
     {
         newClientFlag = true;
-        for (byte ii = 0; ii < MAX_CLIENTS; ii++)
+        for (byte ii = 0; ii < clients.size(); ii++)
         {
-            if (!clients[ii])
-            {
-                TEST_SERIAL.print("New client #");
-                TEST_SERIAL.println(ii);
-                // Once we "accept", the client is no longer tracked by EthernetServer
-                // so we must store it into our list of clients
-                clients[ii] = newClient;
-                break;
-            }
+            TEST_SERIAL.print("New client #");
+            TEST_SERIAL.println(ii);
+            // Once we "accept", the client is no longer tracked by EthernetServer
+            // so we must store it into our list of clients
+            clients.push_back(newClient);
+            break;
         }
     }
     return (newClientFlag);
@@ -120,11 +116,12 @@ void EthernetCommsService::checkForNewClientData()
     checkForNewClients();
 
     // check for incoming data from all clients
-    for (byte ii = 0; ii < MAX_CLIENTS; ii++)
+    // for (byte ii = 0; ii < MAX_CLIENTS; ii++)
+    for (auto itr = clients.begin(); itr != clients.end(); itr++)
     {
-        if (clients[ii] && clients[ii].available() > 0)
+        if ((*itr).available())
         {
-            checkForNewMessages(clients[ii]);
+            checkForNewMessages(*itr);
         }
     }
     stopDisconnectedClients();
@@ -133,13 +130,13 @@ void EthernetCommsService::checkForNewClientData()
 void EthernetCommsService::stopDisconnectedClients()
 {
     // stop any clients which disconnect
-    for (byte ii = 0; ii < MAX_CLIENTS; ii++)
+    for (auto itr = clients.begin(); itr != clients.end(); itr++)
     {
-        if (clients[ii] && !clients[ii].connected())
+        if (!(*itr).connected())
         {
             TEST_SERIAL.print("disconnect client #");
-            TEST_SERIAL.println(ii);
-            clients[ii].stop();
+            // TEST_SERIAL.println(ii);
+            (*itr).stop();
         }
     }
 }
@@ -171,8 +168,10 @@ bool EthernetCommsService::checkForNewMessages(EthernetClient &client)
 
                 if ((c == '\n') || (bytesRead >= RX_BUFF_SIZE))
                 {
-                    this->parseReceivedData((char *)readBuff);
+                    NetCommsMessage *newMsg = new NetCommsMessage();
+                    newMsg->parseReceivedData((char *)readBuff);
                     // TEST_SERIAL.println("Parsing done.");
+                    this->messageQueue.push_back(newMsg);
                     break;
                 }
                 else
@@ -188,27 +187,29 @@ bool EthernetCommsService::checkForNewMessages(EthernetClient &client)
     return true;
 }
 
-void EthernetCommsService::parseReceivedData(char *rxBuff)
+void EthernetCommsService::sendMessage(CommsMessage &msg)
 {
-    std::vector<std::string> argStrs;
-    char *token = std::strtok(rxBuff, "#;");
+    std::string msgStr = msg.getMessageStr();
+}
 
-    while (token != NULL)
+void EthernetCommsService::processReceived()
+{
+    // std::vector<CommsMessage*>::iterator itr;
+    for (auto itr = messageQueue.begin(); itr != messageQueue.end();)
     {
-        argStrs.push_back(std::string(token));
-        token = strtok(NULL, "#;");
+        CommsMessage * basePtr = (*itr);
+        NetCommsMessage *msg = dynamic_cast<NetCommsMessage*>(basePtr);
+
+        uint32_t id = msg->id;
+        MsgHandlerFn handlerFn = defaultMessageHandler;
+
+        TOGGLE_DEBUG_PIN();
+        if (id <= MAX_CTRL_MESSAGES)
+        {
+            handlerFn = messageHandlerList[id];
+        }
+        handlerFn(*msg);
+        delete msg;
+        messageQueue.erase(itr);
     }
-
-    uint16_t idVal = std::atoi(argStrs.back().c_str());
-    argStrs.pop_back();
-
-    // CommsMessage *newMsg = new CommsMessage(idVal);
-    CommsMessage newMsg(idVal);
-    for (uint16_t ii = 0; ii < argStrs.size(); ii++)
-    {
-        double argDbl = std::atof(argStrs.at(ii).c_str());
-        newMsg.args.push_back(argDbl);
-    }
-
-    this->messageQueue.push_back(newMsg);
 }

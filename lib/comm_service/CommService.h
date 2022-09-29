@@ -3,6 +3,7 @@
 #include <cstdint>
 #include <array>
 #include <vector>
+#include <sstream>
 
 #include <device.h>
 #include <debug.h>
@@ -23,6 +24,7 @@
 ///////////////// CTRL PC MESSAGE ID's /////////////////
 typedef enum
 {
+    HANDSHAKE,
     CTRL_MSG_MIN,
     REQUEST_STATS,
     TIMESET_REQ_ACK,
@@ -40,49 +42,45 @@ typedef enum
 #define MAX_CTRL_MESSAGES 0x40U // can be increased if needed
 
 ///////////////// TYPES /////////////////
-struct CommsMessage
+class CommsMessage
 {
+public:
+    CommsMessage(){}
+    virtual ~CommsMessage(){}
+    virtual void placeholder(){}
     CommsMessage(uint16_t _msgId) : id(_msgId) {}
     uint16_t id;
     std::vector<double> args;
-    void printMessageInfo()
-    { 
-        TEST_SERIAL.printf("%d:\t", id);
-        for(uint16_t ii = 0; ii < args.size(); ii++)
-        {
-            TEST_SERIAL.printf("%4.2f:\t", args.at(ii));
-        }
-    }
-
+    void printMessageInfo();
+    std::string getMessageStr();
+    void parseReceivedData(char *rxBuff);
 };
-
 
 class CommsService
 {
 
 protected:
-
     static void defaultMessageHandler(CommsMessage &dontCare);
     void errorMessageHandler(CommsMessage &msg);
 
     bool commsServiceStatus;
-    std::vector<CommsMessage> messageQueue;
-    
-private:
+    std::vector<CommsMessage *> messageQueue;
+
     typedef void (*MsgHandlerFn)(CommsMessage &);
     typedef std::array<MsgHandlerFn, MAX_CTRL_MESSAGES> MessageHandlerList;
     MessageHandlerList messageHandlerList;
 
+private:
 public:
     CommsService();
     virtual ~CommsService() {}
 
-    void processReceived();
     void registerMessageHandler(uint16_t msgId, MsgHandlerFn fn);
     virtual bool Status() { return commsServiceStatus; };
     virtual bool checkForNewMessages() { return false; };
     virtual bool checkForNewClients() { return false; };
     virtual void sendMessage(CommsMessage &msg){};
     virtual void stopDisconnectedClients(){};
+    virtual void processReceived(){};
     virtual void parseReceivedData(){};
 };

@@ -14,13 +14,12 @@
 #include <heartbeat.h>
 #include <debug.h>
 #include <device.h>
-#include <NetComms.h>
+
+#include "Telescope.h"
 
 #define MODE_PIN_LOW 0U
 #define MODE_PIN_HIGH 1U
 #define MODE_PIN_INVALID 2U
-
-EthernetCommsService *commsService;
 
 /**
  * @brief configure pins and test interfaces
@@ -37,17 +36,8 @@ void deviceSetup()
 
   TEST_SERIAL.begin(TEST_SERIAL_BAUD);
 
-  commsService = new EthernetCommsService();
+  initMountControl();
   delay(500);
-  if (!commsService->Status())
-  {
-    TEST_SERIAL.println("Device Setup Failed.");
-    while (true)
-    {
-      ;
-      ;
-    }
-  }
 
   TEST_SERIAL.println("Device Setup Complete.");
 }
@@ -81,8 +71,6 @@ void loop(void)
   // pingHeartBeat();
   ;
   ;
+  serviceMountControl();
 
-  // listen for incoming Ethernet connections:
-  commsService->checkForNewClientData();
-  commsService->processReceived();
 }
