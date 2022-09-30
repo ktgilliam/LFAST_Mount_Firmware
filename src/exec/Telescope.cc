@@ -7,6 +7,9 @@
 
 EthernetCommsService *commsService;
 
+// Message Handlers:
+void handshake(CommsMessage &handshakeMsg);
+
 void initMountControl()
 {
     commsService = new EthernetCommsService();
@@ -20,12 +23,7 @@ void initMountControl()
             ;
         }
     }
-}
-
-void handshake(CommsMessage &dontCare)
-{
-    TEST_SERIAL.print("Shaking the hand!\r\n");
-    
+    commsService->registerMessageHandler(99, handshake);
 }
 
 void serviceMountControl()
@@ -34,3 +32,10 @@ void serviceMountControl()
     commsService->checkForNewClientData();
     commsService->processReceived();
 }
+
+void handshake(CommsMessage &handshakeMsg)
+{
+    TEST_SERIAL.print("Shaking the hand!\r\n");
+    commsService->sendMessage(handshakeMsg);
+}
+

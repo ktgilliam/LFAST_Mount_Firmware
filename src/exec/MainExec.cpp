@@ -36,10 +36,7 @@ void deviceSetup()
 
   TEST_SERIAL.begin(TEST_SERIAL_BAUD);
 
-  initMountControl();
-  delay(500);
 
-  TEST_SERIAL.println("Device Setup Complete.");
 }
 
 /**
@@ -50,6 +47,9 @@ void setup(void)
 {
 
   deviceSetup();
+  initMountControl();
+  
+  delay(500);
 
   initHeartbeat();
   resetHeartbeat();

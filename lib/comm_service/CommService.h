@@ -75,7 +75,7 @@ public:
     CommsService();
     virtual ~CommsService() {}
 
-    void registerMessageHandler(uint16_t msgId, MsgHandlerFn fn);
+    virtual void registerMessageHandler(uint16_t msgId, MsgHandlerFn fn);
     virtual bool Status() { return commsServiceStatus; };
     virtual bool checkForNewMessages() { return false; };
     virtual bool checkForNewClients() { return false; };
