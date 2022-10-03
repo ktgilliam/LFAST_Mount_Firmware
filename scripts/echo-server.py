@@ -1,5 +1,6 @@
 # echo-server.py
 
+from operator import truediv
 import socket
 from xml.dom.minidom import TypeInfo
 
@@ -13,6 +14,8 @@ HOST = "localhost"
 PORT = 4400  # The port used by the server
 
 print("Attempting to connect.")
+
+mountParked = True
 
 with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as server:
     # server.close()
@@ -49,21 +52,45 @@ with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as server:
             match id:
                 case 99:
                     print("Sending " + data.decode('utf-8'))
-                    client_socket.sendall("99#Handshake^".encode('utf-8'))
+                    client_socket.sendall(idB+("#Handshake^".encode('utf-8')))
                     # client_socket.sendall(b'abcd')
                 case 2:
                     print("Sending RA/DEC")
-                    raVal = raVal + 0.1
-                    deVal = deVal + 0.05
-                    raDecStr = "2#" + str(raVal) + ";" + str(deVal) + "^"
+                    # raVal = raVal + 0.1
+                    # deVal = deVal + 0.05
+                    raDecStr = "2#ALT=" + str(raVal) + ";AZ=" + str(deVal) + "^"
                     # client_socket.sendall(bytes("2#1.234").encode('utf-8'))
                     client_socket.sendall(raDecStr.encode('utf-8'))
                 case 3:
                     print("Sending Tracking Status")
-                    client_socket.sendall("3#0.0^".encode('utf-8'))
+                    client_socket.sendall(idB+("#TrackRate=0.0^".encode('utf-8')))
+                case 4:
+                    print("Sending Slew Status")
+                    client_socket.sendall(idB+("#SlewIsComplete=true^".encode('utf-8')))
+                case 5:
+                    print("Sending Park Status")
+                    if mountParked :
+                        client_socket.sendall(idB+("#MountIsParked=true^".encode('utf-8')))
+                    else :
+                        client_socket.sendall(idB+("#MountIsParked=false^".encode('utf-8')))
+                case 6:
+                    print("Sending park command ack")
+                    client_socket.sendall(idB+("#MountParkCommand=$OK^".encode('utf-8')))
+                    mountParked=True
+                case 7:
+                    print("Sending unpark command ack")
+                    mountParked=False
+                    client_socket.sendall(idB+("#MountUnparkCommand=$OK^".encode('utf-8')))
+                case 8:
+                    print("Sending home command ack")
+                    client_socket.sendall(idB+("#MountHomeCommand=$OK^".encode('utf-8')))
+                case 9:
+                    print("Sending abort command ack")
+                    client_socket.sendall(idB+("#MountAbortCommand=$OK^".encode('utf-8')))
                 case _:
                     toPrint = "(Default) Sending " + data.decode("utf-8")
                     print(toPrint)
                     # client_socket.sendall(data)
+                    
             del data
             print("\n")
