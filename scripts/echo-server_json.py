@@ -17,6 +17,7 @@ PORT = 4400  # The port used by the server
 print("Attempting to connect.")
 
 mountParked = True
+handshook = False
 
 with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as server:
     # server.close()
@@ -27,22 +28,31 @@ with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as server:
     with client_socket:
         print(f"Connected by {client_address}")
         while True:
-            data = client_socket.recv(1024)
+            data = client_socket.recv(2048)
             if not data:
                 break
+            # print(data)
             dataStr = data.decode()
+            # print(dataStr)
             msgJson = json.loads(dataStr)
-            
-            print(msgJson["MountMessage"])
-            
-            handshakeMsgJson = {
-                "ControllerMessage" : {
-                    "handshake": 0xbeef
-                }
-            }
-            handshakeMsgStr = json.dumps(handshakeMsgJson)
-            print(handshakeMsgStr)
-            client_socket.sendall(handshakeMsgStr.encode('utf-8'))
-            
-            del data
-            print("\n")
+            # print(msgJson["MountMessage"])
+            # print(msgJson["MountMessage"]["Handshake"])
+            if handshook == False:
+                handshakeStr = msgJson["MountMessage"]["Handshake"]
+                handshakeVal = int(handshakeStr, 16)
+                print(hex(handshakeVal))
+                if handshakeVal == 0xDEAD:
+                    handshakeMsgJson = {
+                        "KarbonMessage" : {
+                            "Handshake": 0xbeef
+                        }
+                    }
+                    handshook = True
+                    handshakeMsgStr = json.dumps(handshakeMsgJson)
+                    txStr = handshakeMsgStr+"\n"
+                    print(txStr)
+                    client_socket.sendall(txStr.encode('utf-8'))
+            else:
+                print(msgJson)
+            # del data
+            # print("\n")
