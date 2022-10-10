@@ -1,10 +1,11 @@
 # echo-server.py
 
-from operator import truediv
+# from operator import truediv
 from pickle import FALSE
 import socket
 from xml.dom.minidom import TypeInfo
 import json
+import time
 
 # HOST = "127.0.0.1"  # Standard loopback interface address (localhost)
 # PORT = 65432  # Port to listen on (non-privileged ports are > 1023)
@@ -18,7 +19,12 @@ PORT = 4400  # The port used by the server
 print("Attempting to connect.")
 
 mountParked = True
+mountIsParking = False
+parkCommandTime = time.time()
+
+
 handshook = False
+
 
 doPrint = False
 with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as server:
@@ -54,16 +60,17 @@ with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as server:
                     }
                     handshook = True
                     handshakeMsgStr = json.dumps(handshakeMsgJson)
-                    txStr = handshakeMsgStr+"\n"
+                    txStr = handshakeMsgStr+"\0"
                     client_socket.sendall(txStr.encode('utf-8'))
 
             else:
+                now = time.time()
                 msgJson = json.loads(dataStr)
                 for key in msgJson["MountMessage"].keys():
                     # print(key)
                     ### Alt Az Request
                     if key == "RequestAltAz":
-                        doPrint = False
+                        doPrint = True
                         doSend = True
                         altVal = altVal + 0.01
                         azVal = azVal + 0.02
@@ -74,52 +81,73 @@ with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as server:
                         }
                         }
                         altAzMsgStr = json.dumps(altAzMsgJson)
-                        txStr = altAzMsgStr+"\n"
+                        txStr = altAzMsgStr
                     ### Park Status Request
-                    if key=="IsParked":
+                    elif key=="IsParked":
                         doPrint = True
+                        doSend = True
+                        timeSinceParkCommand = now-parkCommandTime
+                        # print("###Time since park Command: "+str(timeSinceParkCommand))
+                        if mountIsParking :
+                            mountParked = (timeSinceParkCommand>3)
+                            print("...Setting mount parked to "+str(timeSinceParkCommand>15))
+                            mountIsParking = False
+                            timeSinceParkCommand = 0
                         IsParkedMsgJson = {
                         "KarbonMessage" : {
                             "IsParked": mountParked
                         }
                         }
                         isParkedStr = json.dumps(IsParkedMsgJson)
-                        txStr = isParkedStr+"\n"
+                        txStr = isParkedStr
                     ### Park Command
-                    if key=="ParkCommand":
+                    elif key=="ParkCommand":
                         doPrint = True
-                        mountParked = True
+                        doSend = True
+                        mountIsParking = True
+                        # mountParked = True
+                        if not mountIsParking:
+                            parkCommandTime = time.time()
                         ParkAckMsgJson = {
                         "KarbonMessage" : {
-                            "ParkCommand": "ParkCommand=$OK^"
+                            "ParkCommand": "$OK^",
+                            "NoDisconnect": "$OK^"
                         }
                         }
                         parkCmdStr = json.dumps(ParkAckMsgJson)
-                        txStr = parkCmdStr+"\n"
+                        txStr = parkCmdStr
                     ### Unpark Command
-                    if key=="UnparkCommand":
-                        doPrint = False
+                    elif key=="UnparkCommand":
+                        doPrint = True
+                        doSend = True
                         mountParked = False
                         UnparkAckMsgJson = {
                         "KarbonMessage" : {
-                            "UnparkCommand": "UnparkCommand=$OK^"
+                            "UnparkCommand": "$OK^"
                         }
                         }
                         unparkCmdStr = json.dumps(UnparkAckMsgJson)
-                        txStr = unparkCmdStr+"\n"
+                        txStr = unparkCmdStr
                     ### Tracking Status Request
-                    if key=="getTrackRate":
-                        doPrint = False
+                    elif key=="getTrackRate":
+                        doPrint = True
+                        doSend = True
                         TrackRateJson = {
                         "KarbonMessage" : {
-                            "getTrackRate": 0.0
+                            "TrackRate": 0.0
                         }
                         }
                         trackRateJsonStr = json.dumps(TrackRateJson)
-                        txStr = trackRateJsonStr+"\n"
-                    client_socket.sendall(txStr.encode('utf-8'))
-                    if doPrint == True:
+                        txStr = trackRateJsonStr
+                    else:
+                        doPrint = True
+                        doSend = False
+                    if doSend:
+                        txStr = txStr+"\0"
+                        client_socket.sendall(txStr.encode('utf-8'))
+                    if doPrint:
                         print("Received: "+dataStr)
                         print("Sent: "+txStr)
+                        print("\n")
             # del data
             # print("\n")
