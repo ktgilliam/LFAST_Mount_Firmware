@@ -66,22 +66,19 @@ with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as server:
             else:
                 now = time.time()
                 msgJson = json.loads(dataStr)
+                doSend = False
+                ResponseJson = {}
+                ResponseJson["KarbonMessage"] = {}
                 for key in msgJson["MountMessage"].keys():
-                    # print(key)
+                    print(key)
                     ### Alt Az Request
                     if key == "RequestAltAz":
-                        doPrint = True
+                        doPrint = False
                         doSend = True
                         altVal = altVal + 0.01
                         azVal = azVal + 0.02
-                        altAzMsgJson = {
-                        "KarbonMessage" : {
-                            "AltPosition": altVal,
-                            "AzPosition" : azVal
-                        }
-                        }
-                        altAzMsgStr = json.dumps(altAzMsgJson)
-                        txStr = altAzMsgStr
+                        ResponseJson["KarbonMessage"]["AltPosition"] = altVal
+                        ResponseJson["KarbonMessage"]["AzPosition"] = azVal
                     ### Park Status Request
                     elif key=="IsParked":
                         doPrint = True
@@ -90,64 +87,81 @@ with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as server:
                         # print("###Time since park Command: "+str(timeSinceParkCommand))
                         if mountIsParking :
                             mountParked = (timeSinceParkCommand>3)
-                            print("...Setting mount parked to "+str(timeSinceParkCommand>15))
-                            mountIsParking = False
-                            timeSinceParkCommand = 0
-                        IsParkedMsgJson = {
-                        "KarbonMessage" : {
-                            "IsParked": mountParked
-                        }
-                        }
-                        isParkedStr = json.dumps(IsParkedMsgJson)
-                        txStr = isParkedStr
+                            print("Mount parked: "+str(timeSinceParkCommand>15))
+                            if mountParked:
+                                mountIsParking = False
+                                timeSinceParkCommand = 0
+                        ResponseJson["KarbonMessage"]["IsParked"] = mountParked
                     ### Park Command
-                    elif key=="ParkCommand":
+                    elif key=="Park":
                         doPrint = True
                         doSend = True
-                        mountIsParking = True
                         # mountParked = True
                         if not mountIsParking:
-                            parkCommandTime = time.time()
-                        ParkAckMsgJson = {
-                        "KarbonMessage" : {
-                            "ParkCommand": "$OK^",
-                            "NoDisconnect": "$OK^"
-                        }
-                        }
-                        parkCmdStr = json.dumps(ParkAckMsgJson)
-                        txStr = parkCmdStr
+                            parkCommandTime = time.time()                     
+                            mountIsParking = True
+                        ResponseJson["KarbonMessage"]["Park"] = "$OK^"
+                        ResponseJson["KarbonMessage"]["NoDisconnect"] = "$OK^"
+                        # print(json.dumps(ResponseJson))
                     ### Unpark Command
-                    elif key=="UnparkCommand":
+                    elif key=="Unpark":
                         doPrint = True
                         doSend = True
                         mountParked = False
-                        UnparkAckMsgJson = {
-                        "KarbonMessage" : {
-                            "UnparkCommand": "$OK^"
-                        }
-                        }
-                        unparkCmdStr = json.dumps(UnparkAckMsgJson)
-                        txStr = unparkCmdStr
+                        ResponseJson["KarbonMessage"]["Unpark"] = "$OK^"
                     ### Tracking Status Request
+                    elif key=="TrackRate":
+                        doPrint = True
+                        doSend = True
+                        ResponseJson["KarbonMessage"]["TrackRate"] = 0.0
+                    ### FindHome Command
+                    elif key=="FindHome":
+                        doPrint = True
+                        doSend = True
+                        print("Homing...\n")
+                        time.sleep(2)
+                        ResponseJson["KarbonMessage"]["FindHome"] = "$OK^"
+                    ### slewToAltPosn Command
+                    elif key=="slewToAltPosn":
+                        doPrint = True
+                        doSend = True
+                        ResponseJson["KarbonMessage"]["slewToAltPosn"] = "$OK^"
+                    ### slewToAzPosn Command
+                    elif key=="slewToAzPosn":
+                        doPrint = True
+                        doSend = True
+                        ResponseJson["KarbonMessage"]["slewToAzPosn"] = "$OK^"
+                    ### syncAltPosn Command
+                    elif key=="syncAltPosn":
+                        doPrint = True
+                        doSend = True
+                        ResponseJson["KarbonMessage"]["syncAltPosn"] = "$OK^"
+                    ### syncAzPosn Command
+                    elif key=="syncAzPosn":
+                        doPrint = True
+                        doSend = True
+                        ResponseJson["KarbonMessage"]["syncAzPosn"] = "$OK^"
                     elif key=="getTrackRate":
                         doPrint = True
                         doSend = True
-                        TrackRateJson = {
-                        "KarbonMessage" : {
-                            "TrackRate": 0.0
-                        }
-                        }
-                        trackRateJsonStr = json.dumps(TrackRateJson)
-                        txStr = trackRateJsonStr
+                        ResponseJson["KarbonMessage"]["TrackRate"] = 0.0
+                    elif key=="NoDisconnect":
+                        doPrint = True
+                        doSend = True
+                        ResponseJson["KarbonMessage"]["NoDisconnect"] = "$OK^"
                     else:
                         doPrint = True
-                        doSend = False
-                    if doSend:
-                        txStr = txStr+"\0"
-                        client_socket.sendall(txStr.encode('utf-8'))
+                        print("Unrecognized argument: "+key)
+                if doPrint:
+                    print("Received: "+dataStr)
+
+                if doSend:
+                    txStr=json.dumps(ResponseJson)
+                    txStr = txStr+"\0"
+                    client_socket.sendall(txStr.encode('utf-8'))
                     if doPrint:
-                        print("Received: "+dataStr)
                         print("Sent: "+txStr)
-                        print("\n")
+                if doPrint:
+                    print("\n")
             # del data
             # print("\n")
