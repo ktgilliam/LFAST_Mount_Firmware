@@ -54,37 +54,37 @@ with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as server:
                     print("Sending " + data.decode('utf-8'))
                     client_socket.sendall(idB+("#Handshake^".encode('utf-8')))
                     # client_socket.sendall(b'abcd')
-                case 2:
+                case 1:
                     print("Sending RA/DEC")
                     # raVal = raVal + 0.1
                     # deVal = deVal + 0.05
                     raDecStr = "2#ALT=" + str(raVal) + ";AZ=" + str(deVal) + "^"
                     # client_socket.sendall(bytes("2#1.234").encode('utf-8'))
                     client_socket.sendall(raDecStr.encode('utf-8'))
-                case 3:
+                case 2:
                     print("Sending Tracking Status")
                     client_socket.sendall(idB+("#TrackRate=0.0^".encode('utf-8')))
-                case 4:
+                case 3:
                     print("Sending Slew Status")
                     client_socket.sendall(idB+("#SlewIsComplete=true^".encode('utf-8')))
-                case 5:
+                case 4:
                     print("Sending Park Status")
                     if mountParked :
                         client_socket.sendall(idB+("#MountIsParked=true^".encode('utf-8')))
                     else :
                         client_socket.sendall(idB+("#MountIsParked=false^".encode('utf-8')))
-                case 6:
+                case 5:
                     print("Sending park command ack")
                     client_socket.sendall(idB+("#MountParkCommand=$OK^".encode('utf-8')))
                     mountParked=True
-                case 7:
+                case 6:
                     print("Sending unpark command ack")
                     mountParked=False
                     client_socket.sendall(idB+("#MountUnparkCommand=$OK^".encode('utf-8')))
-                case 8:
+                case 7:
                     print("Sending home command ack")
                     client_socket.sendall(idB+("#MountHomeCommand=$OK^".encode('utf-8')))
-                case 9:
+                case 8:
                     print("Sending abort command ack")
                     client_socket.sendall(idB+("#MountAbortCommand=$OK^".encode('utf-8')))
                 case _:

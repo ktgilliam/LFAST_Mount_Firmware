@@ -42,6 +42,19 @@
         "cinttypes": "cpp",
         "regex": "cpp",
         "utility": "cpp",
-        "typeinfo": "cpp"
+        "typeinfo": "cpp",
+        "string_view": "cpp",
+        "atomic": "cpp",
+        "chrono": "cpp",
+        "condition_variable": "cpp",
+        "cstddef": "cpp",
+        "list": "cpp",
+        "unordered_set": "cpp",
+        "any": "cpp",
+        "optional": "cpp",
+        "ratio": "cpp",
+        "iomanip": "cpp",
+        "mutex": "cpp",
+        "map": "cpp"
     }
 }

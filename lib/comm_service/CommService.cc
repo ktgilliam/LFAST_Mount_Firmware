@@ -7,6 +7,9 @@
 #include <cstring>
 #include <string>
 #include <cstdlib>
+// #include <StreamUtils.h>
+#include <algorithm>
+// #include <string_view>
 
 #include <debug.h>
 #include <device.h>
@@ -14,74 +17,107 @@
 ///////////////////////////////////////////////////////////////////////////////////////////////////////
 ////////////////////////// PUBLIC FUNCTIONS ///////////////////////////////////////////////////////////
 ///////////////////////////////////////////////////////////////////////////////////////////////////////
-CommsService::CommsService()
+LFAST::CommsService::CommsService()
 {
-    for (uint16_t ii = 0; ii < MAX_CTRL_MESSAGES; ii++)
-    {
-        this->registerMessageHandler(ii, CommsService::defaultMessageHandler);
-    }
+    // for (uint16_t ii = 0; ii < MAX_CTRL_MESSAGES; ii++)
+    // {
+    //     this->registerMessageHandler(ii, CommsService::defaultMessageHandler);
+    // }
+    // this->messageHandlerList["Default"] = CommsService::defaultMessageHandler;
 }
 
-void CommsService::registerMessageHandler(uint16_t msgId, MsgHandlerFn fn)
-{
-    this->messageHandlerList[msgId] = fn;
-}
 
-void CommsService::defaultMessageHandler(CommsMessage &dontCare)
+
+
+// void LFAST::CommsService::registerMessageHandler(std::string key, MsgHandlerFn fn)
+// {
+//     this->messageHandlerList[key] = fn;
+// }
+
+void LFAST::CommsService::defaultMessageHandler(std::string info)
 {
 
     std::stringstream ss;
-    ss << "Unregistered Message ID." << std::endl;
+    ss << "Unregistered Message." << std::endl;
     TEST_SERIAL.println(ss.str().c_str());
 }
 
-void CommsService::errorMessageHandler(CommsMessage &msg)
+void LFAST::CommsService::errorMessageHandler(CommsMessage &msg)
 {
-
     std::stringstream ss;
-    ss << "Invalid Message ID. Payload: ";
-
+    ss << "Invalid Message.";
+    //
     ss << std::endl;
     TEST_SERIAL.println(ss.str().c_str());
 }
 
-
-void CommsMessage::parseReceivedData(char *rxBuff)
+void LFAST::CommsMessage::parseReceivedData(char *rxBuff)
 {
-    std::vector<std::string> argStrs;
-    char *token = std::strtok(rxBuff, "#;");
-
-    while (token != NULL)
+    // rxBuff->erase(std::remove_if(rxBuff->begin(), rxBuff->end(),
+    //                              [](char c)
+    //                              {
+    //                                  return (c == '\r' || c == '\t' || c == ' ' || c == '\n');
+    //                              }),
+    //               rxBuff->end());
+    auto error = deserializeJson(jsonDoc, rxBuff);
+    // Test if parsing succeeds.
+    if (error)
     {
-        argStrs.push_back(std::string(token));
-        token = strtok(NULL, "#;");
-    }
-
-    this->id = std::atoi(argStrs.back().c_str());
-    argStrs.pop_back();
-
-    for (uint16_t ii = 0; ii < argStrs.size(); ii++)
-    {
-        double argDbl = std::atof(argStrs.at(ii).c_str());
-        this->args.push_back(argDbl);
+        TEST_SERIAL.print(F("deserializeJson() failed: "));
+        TEST_SERIAL.println(error.f_str());
+        return;
     }
 }
 
-    void CommsMessage::printMessageInfo()
+// void CommsMessage::printMessageInfo()
+// {
+//     TEST_SERIAL.printf("%d:\t", id);
+//     for (uint16_t ii = 0; ii < args.size(); ii++)
+//     {
+//         TEST_SERIAL.printf("%4.2f:\t", args.at(ii));
+//     }
+// }
+
+// std::string CommsMessage::getMessageStr()
+// {
+//     std::stringstream ss;
+//     for (uint16_t ii = 0; ii < args.size(); ii++)
+//     {
+//         ss << this->args.at(ii) << ";";
+//     }
+//     ss << std::hex << this->id << std::endl;
+//     return ss.str();
+// }
+
+void LFAST::CommsService::processReceived()
+{
+
+    for (auto &msg : this->messageQueue)
     {
-        TEST_SERIAL.printf("%d:\t", id);
-        for (uint16_t ii = 0; ii < args.size(); ii++)
-        {
-            TEST_SERIAL.printf("%4.2f:\t", args.at(ii));
-        }
+        auto msgRoot = msg->jsonDoc.to<JsonObject>();
+        for (JsonPair kvp : msgRoot)
+            this->callMessageHandler(kvp);
+        // {
+            // TEST_SERIAL.println(kv.key().c_str());
+            // TEST_SERIAL.println(kv.value().as<char *>());
+            // auto keyStr = std::string(kv.key().c_str());
+            // ArduinoJson6194_F1
+            // auto fnPtr = messageHandlerList[keyStr];
+        // }
+        // root["city"] = "Paris";
     }
-    std::string CommsMessage::getMessageStr()
-    {
-        std::stringstream ss;
-        for (uint16_t ii = 0; ii < args.size(); ii++)
-        {
-            ss << this->args.at(ii) << ";";
-        }
-        ss << std::hex << this->id << std::endl;
-        return ss.str();
-    }
+
+    // for (MessageHandlerList::iterator iter = messageHandlerList.begin(); iter != messageHandlerList.end(); ++iter)
+    // {
+    //     auto key = iter->first;
+    //     // JsonVariant error = root["error"];
+    //     if (!error.isNull())
+    //     {
+    //         Serial.println(error.as<char *>());
+    //         return;
+    //     }
+
+    //     // ignore value
+    //     // Value v = iter->second;
+    // }
+}

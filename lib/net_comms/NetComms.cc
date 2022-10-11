@@ -47,14 +47,14 @@
 void stopDisconnectedClients();
 void getTeensyMacAddr(uint8_t *mac);
 
-IPAddress EthernetCommsService::ip = IPAddress(192, 168, 121, 177);
-EthernetServer EthernetCommsService::server = EthernetServer(PORT);
-byte EthernetCommsService::mac[6] = {0xDE, 0xAD, 0xBE, 0xEF, 0xFE, 0xED};
+IPAddress LFAST::EthernetCommsService::ip = IPAddress(192, 168, 121, 177);
+EthernetServer LFAST::EthernetCommsService::server = EthernetServer(PORT);
+byte LFAST::EthernetCommsService::mac[6] = {0xDE, 0xAD, 0xBE, 0xEF, 0xFE, 0xED};
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////////
 ////////////////////////// PUBLIC FUNCTIONS ///////////////////////////////////////////////////////////
 ///////////////////////////////////////////////////////////////////////////////////////////////////////
-EthernetCommsService::EthernetCommsService()
+LFAST::EthernetCommsService::EthernetCommsService()
 {
     bool initResult = true;
 
@@ -89,7 +89,7 @@ EthernetCommsService::EthernetCommsService()
     this->commsServiceStatus = initResult;
 }
 
-bool EthernetCommsService::checkForNewClients()
+bool LFAST::EthernetCommsService::checkForNewClients()
 {
     bool newClientFlag = false;
     // check for any new client connecting, and say hello (before any incoming data)
@@ -111,7 +111,7 @@ bool EthernetCommsService::checkForNewClients()
     return (newClientFlag);
 }
 
-void EthernetCommsService::checkForNewClientData()
+void LFAST::EthernetCommsService::checkForNewClientData()
 {
     checkForNewClients();
 
@@ -127,7 +127,7 @@ void EthernetCommsService::checkForNewClientData()
     stopDisconnectedClients();
 }
 
-void EthernetCommsService::stopDisconnectedClients()
+void LFAST::EthernetCommsService::stopDisconnectedClients()
 {
     // stop any clients which disconnect
     for (auto itr = clients.begin(); itr != clients.end(); itr++)
@@ -144,7 +144,7 @@ void EthernetCommsService::stopDisconnectedClients()
 ////////////////////////// LOCAL/PRIVATE FUNCTIONS ////////////////////////////////////////////////////
 ///////////////////////////////////////////////////////////////////////////////////////////////////////
 
-void EthernetCommsService::getTeensyMacAddr(uint8_t *mac)
+void LFAST::EthernetCommsService::getTeensyMacAddr(uint8_t *mac)
 {
     for (uint8_t by = 0; by < 2; by++)
         mac[by] = (HW_OCOTP_MAC1 >> ((1 - by) * 8)) & 0xFF;
@@ -152,7 +152,7 @@ void EthernetCommsService::getTeensyMacAddr(uint8_t *mac)
         mac[by + 2] = (HW_OCOTP_MAC0 >> ((3 - by) * 8)) & 0xFF;
 }
 
-bool EthernetCommsService::checkForNewMessages(EthernetClient &client)
+bool LFAST::EthernetCommsService::checkForNewMessages(EthernetClient &client)
 {
     // listen for incoming clients
     if (client)
@@ -168,8 +168,10 @@ bool EthernetCommsService::checkForNewMessages(EthernetClient &client)
 
                 if ((c == '\n') || (bytesRead >= RX_BUFF_SIZE))
                 {
-                    NetCommsMessage *newMsg = new NetCommsMessage();
+                    // NetCommsMessage newMsg;
+                    auto newMsg = new NetCommsMessage();
                     newMsg->parseReceivedData((char *)readBuff);
+
                     // TEST_SERIAL.println("Parsing done.");
                     this->messageQueue.push_back(newMsg);
                     break;
@@ -187,27 +189,7 @@ bool EthernetCommsService::checkForNewMessages(EthernetClient &client)
     return true;
 }
 
-void EthernetCommsService::sendMessage(CommsMessage &msg)
+void LFAST::EthernetCommsService::sendMessage(CommsMessage &msg)
 {
-    std::string msgStr = msg.getMessageStr();
-}
-
-void EthernetCommsService::processReceived()
-{
-    for (auto itr = netMessageQueue.begin(); itr != netMessageQueue.end();)
-    {
-        NetCommsMessage *msg = (*itr);
-
-        uint32_t id = msg->id;
-        MsgHandlerFn handlerFn = defaultMessageHandler;
-
-        TOGGLE_DEBUG_PIN();
-        if (id <= MAX_CTRL_MESSAGES)
-        {
-            handlerFn = messageHandlerList[id];
-        }
-        handlerFn(*msg);
-        delete msg;
-        netMessageQueue.erase(itr);
-    }
+    // std::string msgStr = msg.getMessageStr();
 }
