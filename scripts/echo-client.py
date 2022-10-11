@@ -12,8 +12,9 @@ PORT = 4400  # The port used by the server
 s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
 # with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
 err = s.connect((HOST, PORT))
-    # print(err)
-s.sendall(b"Hello, world\n")
+
+s.sendall(b"Handshake#1")
 data = s.recv(1024)
 
 print(f"Received {data!r}")
+s.close()

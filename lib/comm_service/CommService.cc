@@ -146,27 +146,5 @@ void LFAST::CommsService::processReceived()
         auto msgRoot = msg->jsonDoc.to<JsonObject>();
         for (JsonPair kvp : msgRoot)
             this->callMessageHandler(kvp);
-        // {
-        // TEST_SERIAL.println(kv.key().c_str());
-        // TEST_SERIAL.println(kv.value().as<char *>());
-        // auto keyStr = std::string(kv.key().c_str());
-        // ArduinoJson6194_F1
-        // auto fnPtr = messageHandlerList[keyStr];
-        // }
-        // root["city"] = "Paris";
     }
-
-    // for (MessageHandlerList::iterator iter = messageHandlerList.begin(); iter != messageHandlerList.end(); ++iter)
-    // {
-    //     auto key = iter->first;
-    //     // JsonVariant error = root["error"];
-    //     if (!error.isNull())
-    //     {
-    //         Serial.println(error.as<char *>());
-    //         return;
-    //     }
-
-    //     // ignore value
-    //     // Value v = iter->second;
-    // }
 }
