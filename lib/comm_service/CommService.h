@@ -140,21 +140,19 @@ namespace LFAST
         std::unordered_map<std::string, MessageHandler<double>> doubleHandlers;
         std::unordered_map<std::string, MessageHandler<bool>> boolHandlers;
         std::unordered_map<std::string, MessageHandler<std::string>> stringHandlers;
-
+        template <class T>
+        bool callMessageHandler(std::string key, T val);
     public:
         CommsService();
         virtual ~CommsService() {}
 
         template <class T>
         inline bool registerMessageHandler(std::string key, MessageHandler<T> fn);
-        template <class T>
-        inline bool callMessageHandler(std::string key, T val);
+
         inline bool callMessageHandler(JsonPair kvp);
         virtual bool Status() { return commsServiceStatus; };
         virtual bool checkForNewMessages() { return false; };
-        virtual bool checkForNewClients() { return false; };
         virtual void sendMessage(CommsMessage &msg){};
-        virtual void stopDisconnectedClients(){};
         virtual void processReceived();
         virtual void parseReceivedData(){};
 
@@ -181,41 +179,42 @@ namespace LFAST
     //     return true;
     // }
 
-    template <class T>
-    bool LFAST::CommsService::registerMessageHandler(std::string key, MessageHandler<T> fn)
-    {
-        return false;
-    }
+    // template <class T>
+    // bool LFAST::CommsService::registerMessageHandler(std::string key, MessageHandler<T> fn)
+    // {
+    //     return false;
+    // }
+
     template <>
-    bool LFAST::CommsService::registerMessageHandler(std::string key, MessageHandler<int> fn)
+    inline bool LFAST::CommsService::registerMessageHandler(std::string key, MessageHandler<int> fn)
     {
         this->intHandlers[key] = fn;
         this->handlerTypes[key] = INT_HANDLER;
         return true;
     }
     template <>
-    bool LFAST::CommsService::registerMessageHandler(std::string key, MessageHandler<unsigned int> fn)
+    inline bool LFAST::CommsService::registerMessageHandler(std::string key, MessageHandler<unsigned int> fn)
     {
         this->uIntHandlers[key] = fn;
         this->handlerTypes[key] = UINT_HANDLER;
         return true;
     }
     template <>
-    bool LFAST::CommsService::registerMessageHandler(std::string key, MessageHandler<double> fn)
+    inline bool LFAST::CommsService::registerMessageHandler(std::string key, MessageHandler<double> fn)
     {
         this->doubleHandlers[key] = fn;
         this->handlerTypes[key] = DOUBLE_HANDLER;
         return true;
     }
     template <>
-    bool LFAST::CommsService::registerMessageHandler(std::string key, MessageHandler<bool> fn)
+    inline bool LFAST::CommsService::registerMessageHandler(std::string key, MessageHandler<bool> fn)
     {
         this->boolHandlers[key] = fn;
         this->handlerTypes[key] = BOOL_HANDLER;
         return true;
     }
     template <>
-    bool LFAST::CommsService::registerMessageHandler(std::string key, MessageHandler<std::string> fn)
+    inline bool LFAST::CommsService::registerMessageHandler(std::string key, MessageHandler<std::string> fn)
     {
         this->stringHandlers[key] = fn;
         this->handlerTypes[key] = STRING_HANDLER;
@@ -224,7 +223,7 @@ namespace LFAST
 
 
     template <>
-    bool LFAST::CommsService::callMessageHandler(std::string key, int val)
+    inline bool LFAST::CommsService::callMessageHandler(std::string key, int val)
     {
         auto mh = this->intHandlers[key];
         mh.call(val);
@@ -232,7 +231,7 @@ namespace LFAST
     }
 
     template <>
-    bool LFAST::CommsService::callMessageHandler(std::string key, unsigned int val)
+    inline bool LFAST::CommsService::callMessageHandler(std::string key, unsigned int val)
     {
         auto mh = this->uIntHandlers[key];
         mh.call(val);
@@ -240,7 +239,7 @@ namespace LFAST
     }
 
     template <>
-    bool LFAST::CommsService::callMessageHandler(std::string key, double val)
+    inline bool LFAST::CommsService::callMessageHandler(std::string key, double val)
     {
         auto mh = this->doubleHandlers[key];
         mh.call(val);
@@ -248,7 +247,7 @@ namespace LFAST
     }
 
     template <>
-    bool LFAST::CommsService::callMessageHandler(std::string key, bool val)
+    inline bool LFAST::CommsService::callMessageHandler(std::string key, bool val)
     {
         auto mh = this->boolHandlers[key];
         mh.call(val);
@@ -256,65 +255,14 @@ namespace LFAST
     }
 
     template <>
-    bool LFAST::CommsService::callMessageHandler(std::string key, std::string val)
+    inline bool LFAST::CommsService::callMessageHandler(std::string key, std::string val)
     {
         auto mh = this->stringHandlers[key];
         mh.call(val);
         return true;
     }
 
-    inline bool LFAST::CommsService::callMessageHandler(JsonPair kvp)
-    {
-        bool handlerFound = true;
-        auto keyStr = std::string(kvp.key().c_str());
-        if (this->handlerTypes.find(keyStr) == this->handlerTypes.end())
-        {
-            handlerFound = false;
-            defaultMessageHandler(keyStr);
-        }
-        else
-        {
-            auto handlerType = this->handlerTypes[keyStr];
-
-            switch (handlerType)
-            {
-            case INT_HANDLER:
-            {
-                auto val = kvp.value().as<int>();
-                this->callMessageHandler<int>(keyStr, val);
-            }
-            break;
-            case UINT_HANDLER:
-            {
-                auto val = kvp.value().as<unsigned int>();
-                this->callMessageHandler<unsigned int>(keyStr, val);
-            }
-            break;
-            case DOUBLE_HANDLER:
-            {
-                auto val = kvp.value().as<double>();
-                this->callMessageHandler<double>(keyStr, val);
-            }
-            break;
-            case BOOL_HANDLER:
-            {
-                auto val = kvp.value().as<bool>();
-                this->callMessageHandler<bool>(keyStr, val);
-            }
-            break;
-            case STRING_HANDLER:
-            {
-                auto val = kvp.value().as<std::string>();
-                this->callMessageHandler<std::string>(keyStr, val);
-            }
-            break;
-            default:
-                handlerFound = false;
-            }
-        }
-
-        return handlerFound;
-    }
+    
 
 
 

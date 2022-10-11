@@ -26,9 +26,6 @@ LFAST::CommsService::CommsService()
     // this->messageHandlerList["Default"] = CommsService::defaultMessageHandler;
 }
 
-
-
-
 // void LFAST::CommsService::registerMessageHandler(std::string key, MsgHandlerFn fn)
 // {
 //     this->messageHandlerList[key] = fn;
@@ -69,6 +66,58 @@ void LFAST::CommsMessage::parseReceivedData(char *rxBuff)
     }
 }
 
+bool LFAST::CommsService::callMessageHandler(JsonPair kvp)
+{
+    bool handlerFound = true;
+    auto keyStr = std::string(kvp.key().c_str());
+    if (this->handlerTypes.find(keyStr) == this->handlerTypes.end())
+    {
+        handlerFound = false;
+        defaultMessageHandler(keyStr);
+    }
+    else
+    {
+        auto handlerType = this->handlerTypes[keyStr];
+
+        switch (handlerType)
+        {
+        case INT_HANDLER:
+        {
+            auto val = kvp.value().as<int>();
+            this->callMessageHandler<int>(keyStr, val);
+        }
+        break;
+        case UINT_HANDLER:
+        {
+            auto val = kvp.value().as<unsigned int>();
+            this->callMessageHandler<unsigned int>(keyStr, val);
+        }
+        break;
+        case DOUBLE_HANDLER:
+        {
+            auto val = kvp.value().as<double>();
+            this->callMessageHandler<double>(keyStr, val);
+        }
+        break;
+        case BOOL_HANDLER:
+        {
+            auto val = kvp.value().as<bool>();
+            this->callMessageHandler<bool>(keyStr, val);
+        }
+        break;
+        case STRING_HANDLER:
+        {
+            auto val = kvp.value().as<std::string>();
+            this->callMessageHandler<std::string>(keyStr, val);
+        }
+        break;
+        default:
+            handlerFound = false;
+        }
+    }
+
+    return handlerFound;
+}
 // void CommsMessage::printMessageInfo()
 // {
 //     TEST_SERIAL.printf("%d:\t", id);
@@ -98,11 +147,11 @@ void LFAST::CommsService::processReceived()
         for (JsonPair kvp : msgRoot)
             this->callMessageHandler(kvp);
         // {
-            // TEST_SERIAL.println(kv.key().c_str());
-            // TEST_SERIAL.println(kv.value().as<char *>());
-            // auto keyStr = std::string(kv.key().c_str());
-            // ArduinoJson6194_F1
-            // auto fnPtr = messageHandlerList[keyStr];
+        // TEST_SERIAL.println(kv.key().c_str());
+        // TEST_SERIAL.println(kv.value().as<char *>());
+        // auto keyStr = std::string(kv.key().c_str());
+        // ArduinoJson6194_F1
+        // auto fnPtr = messageHandlerList[keyStr];
         // }
         // root["city"] = "Paris";
     }
