@@ -179,11 +179,12 @@ namespace LFAST
     //     return true;
     // }
 
-    // template <class T>
-    // bool LFAST::CommsService::registerMessageHandler(std::string key, MessageHandler<T> fn)
-    // {
-    //     return false;
-    // }
+    template <class T>
+    bool LFAST::CommsService::registerMessageHandler(std::string key, MessageHandler<T> fn)
+    {
+        // TODO: Add exception handling
+        return false;
+    }
 
     template <>
     inline bool LFAST::CommsService::registerMessageHandler(std::string key, MessageHandler<int> fn)
