@@ -156,41 +156,13 @@ void LFAST::CommsService::processReceived()
         {
             TEST_SERIAL.printf("Processing Message #%d...\r\n", count++);
 
-/// EXAMPLE
-#if 0
-            StaticJsonDocument<100> testDocument;
-            testDocument["sensorType"] = "temperature";
-            testDocument["sensorValue"] = 10;
-            JsonObject documentRoot = testDocument.as<JsonObject>();
-            for (JsonPair keyValue : documentRoot)
-            {
-                TEST_SERIAL.printf("Key: %s\r\n", keyValue.key().c_str());
-            }
-#endif
-            /// END EXAMPLE JSON_PROGMEM_SIZE
-            StaticJsonDocument<100> jsonDoc;
-
-
+            StaticJsonDocument<JSON_PROGMEM_SIZE> jsonDoc;
             msg.printMessageInfo();
             auto error = deserializeJson(jsonDoc, msg.getBuffPtr());
 
-
             JsonObject msgRoot = jsonDoc.as<JsonObject>();
             JsonObject msgObject = msgRoot["MountMessage"];
-            // TEST_SERIAL.print("Reserialized...\r\n");
-            // serializeJson(msgObject, TEST_SERIAL);
 
-
-            // for (JsonPair keyValue : msgObject)
-            // {
-            //     TEST_SERIAL.printf("Key: %s\r\n", keyValue.key().c_str());
-            // }
-            // // auto msgObject = this->jsonDoc.to<JsonObject>();
-            // // // //auto msgRoot = msg->jsonDoc.to<JsonVariant>();
-            // // unsigned int tmp = msgObject["MountMessage"];
-            // // TEST_SERIAL.printf("Result: %u\r\n", tmp);
-#if 1
-            // Test if parsing succeeds.
             if (error)
             {
                 TEST_SERIAL.print(F("deserializeJson() failed: "));
@@ -208,10 +180,6 @@ void LFAST::CommsService::processReceived()
                     this->callMessageHandler(kvp);
                 }
             }
-#endif
-            // msg.printMessageInfo();
-
-            // //auto msgRoot = msg->jsonDoc.to<JsonVariant>();
         }
         this->clearMessageQueue();
     }
