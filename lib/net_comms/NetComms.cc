@@ -61,9 +61,9 @@ LFAST::EthernetCommsService::EthernetCommsService()
     TEST_SERIAL.println("\nInitializing Ethernet... ");
     getTeensyMacAddr(mac);
     // Ethernet.MACAddress(mac);
-    TEST_SERIAL.printf("MAC: %02x:%02x:%02x:%02x:%02x:%02x\n",
+    TEST_SERIAL.printf("MAC: %02x:%02x:%02x:%02x:%02x:%02x\r\n",
                        mac[0], mac[1], mac[2], mac[3], mac[4], mac[5]);
-    TEST_SERIAL.println("");
+    // TEST_SERIAL.println("");
     // initialize the Ethernet device
     Ethernet.begin(mac, ip);
     // Ethernet.begin(mac, ip, myDns, gateway, subnet)
@@ -75,17 +75,20 @@ LFAST::EthernetCommsService::EthernetCommsService()
         initResult = false;
     }
 
-    TEST_SERIAL.println("Checking Link...");
+    // TEST_SERIAL.println("Checking Link...");
     if (Ethernet.linkStatus() == LinkOFF)
     {
         TEST_SERIAL.println("Ethernet cable is not connected.");
         initResult = false;
     }
 
-    // start listening for clients
-    server.begin(PORT);
-    TEST_SERIAL.print("Start listening... Local IP: ");
-    TEST_SERIAL.println(Ethernet.localIP());
+    if (initResult)
+    {
+        // start listening for clients
+        this->server.begin(PORT);
+        TEST_SERIAL.print("Start listening... Local IP: ");
+        TEST_SERIAL.println(Ethernet.localIP());
+    }
     this->commsServiceStatus = initResult;
 }
 
@@ -98,15 +101,19 @@ bool LFAST::EthernetCommsService::checkForNewClients()
     if (newClient)
     {
         newClientFlag = true;
-        for (byte ii = 0; ii < clients.size(); ii++)
-        {
-            TEST_SERIAL.print("New client #");
-            TEST_SERIAL.println(ii);
-            // Once we "accept", the client is no longer tracked by EthernetServer
-            // so we must store it into our list of clients
-            clients.push_back(newClient);
-            break;
-        }
+        TEST_SERIAL.printf("New client # %d\r\n", clients.size() + 1);
+        // Once we "accept", the client is no longer tracked by EthernetServer
+        // so we must store it into our list of clients
+        clients.push_back(newClient);
+
+        // for (byte ii = 0; ii < clients.size(); ii++)
+        // {
+        //     TEST_SERIAL.println(ii);
+        //     // Once we "accept", the client is no longer tracked by EthernetServer
+        //     // so we must store it into our list of clients
+        //     clients.push_back(newClient);
+        //     break;
+        // }
     }
     return (newClientFlag);
 }
@@ -117,26 +124,53 @@ void LFAST::EthernetCommsService::checkForNewClientData()
 
     // check for incoming data from all clients
     // for (byte ii = 0; ii < MAX_CLIENTS; ii++)
-    for (auto itr = clients.begin(); itr != clients.end(); itr++)
+
+    for (auto &client : this->clients)
     {
-        if ((*itr).available())
+        if (client.available())
         {
-            checkForNewMessages(*itr);
+            checkForNewMessages(client);
         }
     }
+    // for (auto itr = clients.begin(); itr != clients.end(); itr++)
+    // {
+    //     if ((*itr).available())
+    //     {
+    //         checkForNewMessages(*itr);
+    //     }
+    // }
     stopDisconnectedClients();
 }
 
 void LFAST::EthernetCommsService::stopDisconnectedClients()
 {
     // stop any clients which disconnect
-    for (auto itr = clients.begin(); itr != clients.end(); itr++)
+    // for (auto &client : this->clients)
+    // {
+    //     if (!client.connected())
+    //     {
+    //         TEST_SERIAL.print("disconnect client #");
+    //         // TEST_SERIAL.println(ii);
+    //         client.stop();
+    //     }
+    // }
+
+    // this->clients.erase(std::remove_if(this->clients.begin(), this->clients.end(), 
+    //                    [](EthernetClient client) { return !client.connected(); }), this->clients.end());
+
+    auto itr = clients.begin();
+    while (itr != clients.end())
     {
         if (!(*itr).connected())
         {
-            TEST_SERIAL.print("disconnect client #");
+            // TEST_SERIAL.println("Disconnected client.");
             // TEST_SERIAL.println(ii);
             (*itr).stop();
+            itr = clients.erase(itr);
+        }
+        else
+        {
+            itr++;
         }
     }
 }
@@ -162,15 +196,21 @@ bool LFAST::EthernetCommsService::checkForNewMessages(EthernetClient &client)
         unsigned int bytesRead = 0;
         while (client.connected())
         {
+            // TEST_SERIAL.println("Checking connected client messages");
             if (client.available())
             {
                 char c = client.read();
-
-                if ((c == '\n') || (bytesRead >= RX_BUFF_SIZE))
+                // TEST_SERIAL.print(c);
+                // TEST_SERIAL.printf("%u ", (unsigned int) c);
+                // if (c == '\0') TEST_SERIAL.printf("%u ", (unsigned int) c);
+                
+                if ((c == '\0') || (bytesRead >= RX_BUFF_SIZE))
                 {
                     // NetCommsMessage newMsg;
-                    auto newMsg = new NetCommsMessage();
-                    newMsg->parseReceivedData((char *)readBuff);
+                    // TEST_SERIAL.printf("\nReceived Data: [%s]\r\n", (char *)readBuff);
+                    // auto newMsg = new NetCommsMessage();
+                    NetCommsMessage newMsg;
+                    newMsg.loadReceivedData((char *)readBuff, bytesRead);
 
                     // TEST_SERIAL.println("Parsing done.");
                     this->messageQueue.push_back(newMsg);

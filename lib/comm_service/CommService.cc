@@ -19,6 +19,7 @@
 ///////////////////////////////////////////////////////////////////////////////////////////////////////
 LFAST::CommsService::CommsService()
 {
+
     // for (uint16_t ii = 0; ii < MAX_CTRL_MESSAGES; ii++)
     // {
     //     this->registerMessageHandler(ii, CommsService::defaultMessageHandler);
@@ -33,10 +34,7 @@ LFAST::CommsService::CommsService()
 
 void LFAST::CommsService::defaultMessageHandler(std::string info)
 {
-
-    std::stringstream ss;
-    ss << "Unregistered Message." << std::endl;
-    TEST_SERIAL.println(ss.str().c_str());
+    TEST_SERIAL.printf("Unregistered Message: [%s].\r\n", info.c_str());
 }
 
 void LFAST::CommsService::errorMessageHandler(CommsMessage &msg)
@@ -48,7 +46,7 @@ void LFAST::CommsService::errorMessageHandler(CommsMessage &msg)
     TEST_SERIAL.println(ss.str().c_str());
 }
 
-void LFAST::CommsMessage::parseReceivedData(char *rxBuff)
+void LFAST::CommsMessage::loadReceivedData(char *rxBuff, unsigned int numBytes)
 {
     // rxBuff->erase(std::remove_if(rxBuff->begin(), rxBuff->end(),
     //                              [](char c)
@@ -56,14 +54,12 @@ void LFAST::CommsMessage::parseReceivedData(char *rxBuff)
     //                                  return (c == '\r' || c == '\t' || c == ' ' || c == '\n');
     //                              }),
     //               rxBuff->end());
-    auto error = deserializeJson(jsonDoc, rxBuff);
-    // Test if parsing succeeds.
-    if (error)
-    {
-        TEST_SERIAL.print(F("deserializeJson() failed: "));
-        TEST_SERIAL.println(error.f_str());
-        return;
-    }
+    // std::memset(this->jsonProgMem, 0, JSON_PROGMEM_SIZE);
+    // TEST_SERIAL.printf("Bytes: %d\r\n", numBytes);
+    // TEST_SERIAL.println(rxBuff);
+    memcpy(this->jsonInputBuffer, rxBuff, numBytes + 1);
+
+    // TEST_SERIAL.println(this->jsonInputBuffer);
 }
 
 bool LFAST::CommsService::callMessageHandler(JsonPair kvp)
@@ -118,14 +114,27 @@ bool LFAST::CommsService::callMessageHandler(JsonPair kvp)
 
     return handlerFound;
 }
-// void CommsMessage::printMessageInfo()
-// {
-//     TEST_SERIAL.printf("%d:\t", id);
-//     for (uint16_t ii = 0; ii < args.size(); ii++)
-//     {
-//         TEST_SERIAL.printf("%4.2f:\t", args.at(ii));
-//     }
-// }
+// void LFAST::CommsMessage::printMessageInfo() {}
+
+void LFAST::CommsMessage::printMessageInfo()
+{
+
+    TEST_SERIAL.println("MESSAGE INFO:");
+    TEST_SERIAL.printf("\tID: %u\r\n", (unsigned int)this->getBuffPtr());
+    // TEST_SERIAL.printf("\tBytes: %u\r\n", std::strlen("abc"));
+
+    // TEST_SERIAL.print("\tBuffer Contents: ");
+    // TEST_SERIAL.print(this->msgBuff);
+
+    // for(int16_t ii = 0; ii < 100; ii++)
+    // {
+    //     TEST_SERIAL.print(this->jsonProgMem[ii]);
+    // }
+    TEST_SERIAL.printf("\tJSON: %s\r\n", this->jsonInputBuffer);
+    // serializeJson(jsonDoc, TEST_SERIAL);
+    // TEST_SERIAL.printf("\tBytes: %u\r\n", measureJson(jsonDoc));
+    TEST_SERIAL.println("");
+}
 
 // std::string CommsMessage::getMessageStr()
 // {
@@ -140,11 +149,82 @@ bool LFAST::CommsService::callMessageHandler(JsonPair kvp)
 
 void LFAST::CommsService::processReceived()
 {
-
-    for (auto &msg : this->messageQueue)
+    if (this->messageQueue.size() > 0)
     {
-        auto msgRoot = msg->jsonDoc.to<JsonObject>();
-        for (JsonPair kvp : msgRoot)
-            this->callMessageHandler(kvp);
+        int count = 1;
+        for (auto &msg : this->messageQueue)
+        {
+            TEST_SERIAL.printf("Processing Message #%d...\r\n", count++);
+
+/// EXAMPLE
+#if 0
+            StaticJsonDocument<100> testDocument;
+            testDocument["sensorType"] = "temperature";
+            testDocument["sensorValue"] = 10;
+            JsonObject documentRoot = testDocument.as<JsonObject>();
+            for (JsonPair keyValue : documentRoot)
+            {
+                TEST_SERIAL.printf("Key: %s\r\n", keyValue.key().c_str());
+            }
+#endif
+            /// END EXAMPLE JSON_PROGMEM_SIZE
+            StaticJsonDocument<100> jsonDoc;
+
+
+            msg.printMessageInfo();
+            auto error = deserializeJson(jsonDoc, msg.getBuffPtr());
+
+
+            JsonObject msgRoot = jsonDoc.as<JsonObject>();
+            JsonObject msgObject = msgRoot["MountMessage"];
+            // TEST_SERIAL.print("Reserialized...\r\n");
+            // serializeJson(msgObject, TEST_SERIAL);
+
+
+            // for (JsonPair keyValue : msgObject)
+            // {
+            //     TEST_SERIAL.printf("Key: %s\r\n", keyValue.key().c_str());
+            // }
+            // // auto msgObject = this->jsonDoc.to<JsonObject>();
+            // // // //auto msgRoot = msg->jsonDoc.to<JsonVariant>();
+            // // unsigned int tmp = msgObject["MountMessage"];
+            // // TEST_SERIAL.printf("Result: %u\r\n", tmp);
+#if 1
+            // Test if parsing succeeds.
+            if (error)
+            {
+                TEST_SERIAL.print(F("deserializeJson() failed: "));
+                TEST_SERIAL.println(error.f_str());
+                return;
+            }
+            else
+            {
+                unsigned int tmp = msgObject["Handshake"];
+                TEST_SERIAL.printf("Result: %u\r\n", tmp);
+                for (JsonPair kvp : msgObject)
+                {
+                    auto keyStr = kvp.key().c_str();
+                    TEST_SERIAL.printf("Processing Key: %s\r\n", keyStr);
+                    this->callMessageHandler(kvp);
+                }
+            }
+#endif
+            // msg.printMessageInfo();
+
+            // //auto msgRoot = msg->jsonDoc.to<JsonVariant>();
+        }
+        this->clearMessageQueue();
     }
+}
+
+void LFAST::CommsService::clearMessageQueue()
+{
+    // TEST_SERIAL.printf("Removing %d messages...\r\n", messageQueue.size());
+    auto itr = messageQueue.begin();
+    while (itr != messageQueue.end())
+    {
+        // delete *itr;
+        itr = messageQueue.erase(itr);
+    }
+    // TEST_SERIAL.printf("%d messages remain.\r\n", messageQueue.size());
 }

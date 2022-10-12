@@ -5,15 +5,17 @@
 #include <vector>
 #include <unordered_map>
 #include <sstream>
-
+#include <cstring>
 #include <device.h>
 #include <debug.h>
 // #include <initializer_list>
 #include <ArduinoJson.h>
 
 #define MAX_ARGS 4
+// #define BUFF_SIZE 256
 
-#define MAX_KV_PAIRS 6
+#define MAX_KV_PAIRS 20
+#define JSON_PROGMEM_SIZE JSON_OBJECT_SIZE(MAX_KV_PAIRS)
 ///////////////// CAN FILTER MASKS
 #define CTRL_SNDR_ID_MASK 0xF00
 #define CTRL_MSG_ID_MASK 0x0FF
@@ -47,29 +49,6 @@ typedef enum
 namespace LFAST
 {
     ///////////////// TYPES /////////////////
-
-    // class MessageHandler
-    // {
-    //     template <class T>
-    //     class MessageHandlerPtr
-    //     {
-    //         typedef void (*MsgHandlerFn)(T);
-    //         MsgHandlerFn fnPtr;
-    //     };
-
-    //     void *vPtr;
-
-    //     MessageHandler() { this->vPtr = nullptr; }
-    //     template <class T> MessageHandler(MessageHandlerPtr<T> ptr)
-    //     {
-    //         this->vPtr = static_cast<void *>(ptr);
-    //     }
-    //     template <typename T>
-    //     MessageHandlerPtr<T> get()
-    //     {
-    //         return static_cast<MessageHandlerPtr<T>>(vPtr);
-    //     }
-    // };
     template <class T>
     struct MessageHandler
     {
@@ -97,17 +76,27 @@ namespace LFAST
     {
     public:
         // CommsMessage(){}
-        CommsMessage() {}
-        virtual ~CommsMessage() {}
+        CommsMessage()
+        {
+             
+            // std::memset(this->msgBuff, 0, sizeof(this->msgBuff));
+        }
+        virtual ~CommsMessage() {} // TEST_SERIAL.println("Destructor called."); delete[] msgBuff;}
         virtual void placeholder() {}
         void printMessageInfo();
         std::string getMessageStr();
-        virtual void parseReceivedData(char *rxBuff);
+        virtual void loadReceivedData(char *rxBuff, unsigned int numBytes);
         // std::string MessageKey;
-        StaticJsonDocument<JSON_OBJECT_SIZE(MAX_KV_PAIRS)> jsonDoc;
+        // StaticJsonDocument<JSON_PROGMEM_SIZE> jsonDoc;
         // protected:
         template <typename T>
         inline T getValue(std::string key);
+        const char* getBuffPtr(){return jsonInputBuffer;};
+
+    protected:
+        char jsonInputBuffer[JSON_PROGMEM_SIZE];
+
+        // char *msgBuff;
     };
 
     class CommsService
@@ -118,7 +107,7 @@ namespace LFAST
         void errorMessageHandler(CommsMessage &msg);
 
         bool commsServiceStatus;
-        std::vector<CommsMessage *> messageQueue;
+        std::vector<CommsMessage> messageQueue;
 
         // typedef void (*MsgHandlerFn)(CommsMessage *);
         // typedef std::array<MsgHandlerFn, MAX_CTRL_MESSAGES> MessageHandlerList;
@@ -142,6 +131,7 @@ namespace LFAST
         std::unordered_map<std::string, MessageHandler<std::string>> stringHandlers;
         template <class T>
         bool callMessageHandler(std::string key, T val);
+
     public:
         CommsService();
         virtual ~CommsService() {}
@@ -154,8 +144,7 @@ namespace LFAST
         virtual bool checkForNewMessages() { return false; };
         virtual void sendMessage(CommsMessage &msg){};
         virtual void processReceived();
-        virtual void parseReceivedData(){};
-
+        void clearMessageQueue();
         // protected:
         //     StaticJsonDocument<500> jsonDoc;
     };
@@ -222,7 +211,6 @@ namespace LFAST
         return true;
     }
 
-
     template <>
     inline bool LFAST::CommsService::callMessageHandler(std::string key, int val)
     {
@@ -263,38 +251,33 @@ namespace LFAST
         return true;
     }
 
-    
+    // template <>
+    // inline double CommsMessage::getValue(std::string key)
+    // {
+    //     return (jsonDoc[key.c_str()].as<double>());
+    // }
 
+    // template <>
+    // inline int CommsMessage::getValue(std::string key)
+    // {
+    //     return (jsonDoc[key.c_str()].as<int>());
+    // }
 
+    // template <>
+    // inline unsigned int CommsMessage::getValue(std::string key)
+    // {
+    //     return (jsonDoc[key.c_str()].as<unsigned int>());
+    // }
 
+    // template <>
+    // inline bool CommsMessage::getValue(std::string key)
+    // {
+    //     return (jsonDoc[key.c_str()].as<bool>());
+    // }
 
-    template <>
-    inline double CommsMessage::getValue(std::string key)
-    {
-        return (jsonDoc[key.c_str()].as<double>());
-    }
-
-    template <>
-    inline int CommsMessage::getValue(std::string key)
-    {
-        return (jsonDoc[key.c_str()].as<int>());
-    }
-
-    template <>
-    inline unsigned int CommsMessage::getValue(std::string key)
-    {
-        return (jsonDoc[key.c_str()].as<unsigned int>());
-    }
-
-    template <>
-    inline bool CommsMessage::getValue(std::string key)
-    {
-        return (jsonDoc[key.c_str()].as<bool>());
-    }
-
-    template <>
-    inline std::string CommsMessage::getValue(std::string key)
-    {
-        return (std::string(jsonDoc[key.c_str()].as<const char *>()));
-    }
+    // template <>
+    // inline std::string CommsMessage::getValue(std::string key)
+    // {
+    //     return (std::string(jsonDoc[key.c_str()].as<const char *>()));
+    // }
 }

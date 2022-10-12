@@ -13,7 +13,7 @@ s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
 # with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
 err = s.connect((HOST, PORT))
 
-s.sendall(b"Handshake#1")
+s.sendall(b"Handshake#1\0")
 data = s.recv(1024)
 
 print(f"Received {data!r}")

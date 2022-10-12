@@ -12,6 +12,7 @@ void handshake(unsigned int val);
 
 void initMountControl()
 {
+    TEST_SERIAL.printf("\r\n\r\n\r\n\r\n##########################################################\r\n");
     commsService = new LFAST::EthernetCommsService();
 
     if (!commsService->Status())
@@ -24,6 +25,7 @@ void initMountControl()
         }
     }
     commsService->registerMessageHandler<unsigned int>("Handshake", handshake);
+    // TEST_SERIAL.println("Device Setup Complete.");
 }
 
 void serviceMountControl()

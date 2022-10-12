@@ -4,7 +4,7 @@
 #include <NativeEthernet.h>
 #include <CommService.h>
 
-#define RX_BUFF_SIZE 64
+#define RX_BUFF_SIZE 1024
 #define PORT 4400
 
 namespace LFAST
