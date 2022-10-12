@@ -121,78 +121,103 @@ void LFAST::CommsMessage::printMessageInfo()
 
     TEST_SERIAL.println("MESSAGE INFO:");
     TEST_SERIAL.printf("\tID: %u\r\n", (unsigned int)this->getBuffPtr());
-    // TEST_SERIAL.printf("\tBytes: %u\r\n", std::strlen("abc"));
-
-    // TEST_SERIAL.print("\tBuffer Contents: ");
-    // TEST_SERIAL.print(this->msgBuff);
-
-    // for(int16_t ii = 0; ii < 100; ii++)
-    // {
-    //     TEST_SERIAL.print(this->jsonProgMem[ii]);
-    // }
     TEST_SERIAL.printf("\tJSON: %s\r\n", this->jsonInputBuffer);
     // serializeJson(jsonDoc, TEST_SERIAL);
     // TEST_SERIAL.printf("\tBytes: %u\r\n", measureJson(jsonDoc));
     TEST_SERIAL.println("");
 }
 
-// std::string CommsMessage::getMessageStr()
-// {
-//     std::stringstream ss;
-//     for (uint16_t ii = 0; ii < args.size(); ii++)
-//     {
-//         ss << this->args.at(ii) << ";";
-//     }
-//     ss << std::hex << this->id << std::endl;
-//     return ss.str();
-// }
-
-void LFAST::CommsService::processReceived()
+void LFAST::CommsService::processReceived(CommsMessage &msg)
 {
-    if (this->messageQueue.size() > 0)
+
+    // StaticJsonDocument<JSON_PROGMEM_SIZE> jsonDoc;
+    // msg.printMessageInfo();
+    auto error = deserializeJson(msg.rxJsonDoc, msg.getBuffPtr());
+    JsonObject msgRoot = msg.rxJsonDoc.as<JsonObject>();
+    JsonObject msgObject = msgRoot["MountMessage"];
+    // Test if parsing succeeds.
+    if (error)
     {
-        int count = 1;
-        for (auto &msg : this->messageQueue)
+        TEST_SERIAL.print(F("deserializeJson() failed: "));
+        TEST_SERIAL.println(error.f_str());
+        return;
+    }
+    else
+    {
+        for (JsonPair kvp : msgObject)
         {
-            TEST_SERIAL.printf("Processing Message #%d...\r\n", count++);
-
-            StaticJsonDocument<JSON_PROGMEM_SIZE> jsonDoc;
-            msg.printMessageInfo();
-            auto error = deserializeJson(jsonDoc, msg.getBuffPtr());
-
-            JsonObject msgRoot = jsonDoc.as<JsonObject>();
-            JsonObject msgObject = msgRoot["MountMessage"];
-
-            if (error)
-            {
-                TEST_SERIAL.print(F("deserializeJson() failed: "));
-                TEST_SERIAL.println(error.f_str());
-                return;
-            }
-            else
-            {
-                unsigned int tmp = msgObject["Handshake"];
-                TEST_SERIAL.printf("Result: %u\r\n", tmp);
-                for (JsonPair kvp : msgObject)
-                {
-                    auto keyStr = kvp.key().c_str();
-                    TEST_SERIAL.printf("Processing Key: %s\r\n", keyStr);
-                    this->callMessageHandler(kvp);
-                }
-            }
+            auto keyStr = kvp.key().c_str();
+            TEST_SERIAL.printf("Processing Key: %s\r\n", keyStr);
+            this->callMessageHandler(kvp);
         }
-        this->clearMessageQueue();
     }
 }
 
-void LFAST::CommsService::clearMessageQueue()
+bool LFAST::CommsService::processNewMessages(Client &client)
 {
-    // TEST_SERIAL.printf("Removing %d messages...\r\n", messageQueue.size());
-    auto itr = messageQueue.begin();
-    while (itr != messageQueue.end())
+    // listen for incoming clients
+    if (client)
     {
-        // delete *itr;
-        itr = messageQueue.erase(itr);
+        uint8_t readBuff[RX_BUFF_SIZE];
+        memset(readBuff, 0, RX_BUFF_SIZE);
+        unsigned int bytesRead = 0;
+        while (client.connected())
+        {
+            // TEST_SERIAL.println("Checking connected client messages");
+            if (client.available())
+            {
+                char c = client.read();
+                // TEST_SERIAL.print(c);
+                // TEST_SERIAL.printf("%u ", (unsigned int) c);
+                // if (c == '\0') TEST_SERIAL.printf("%u ", (unsigned int) c);
+                
+                if ((c == '\0') || (bytesRead >= RX_BUFF_SIZE))
+                {
+                    // NetCommsMessage newMsg;
+                    // TEST_SERIAL.printf("\nReceived Data: [%s]\r\n", (char *)readBuff);
+                    // auto newMsg = new NetCommsMessage();
+                    CommsMessage newMsg;
+                    newMsg.loadReceivedData((char *)readBuff, bytesRead);
+
+                    // TEST_SERIAL.println("Parsing done.");
+                    this->processReceived(newMsg);
+                    // this->rxMessageQueue.push_back(newMsg);
+                    break;
+                }
+                else
+                {
+                    readBuff[bytesRead++] = c;
+                }
+            }
+        }
     }
-    // TEST_SERIAL.printf("%d messages remain.\r\n", messageQueue.size());
+    return true;
+}
+
+bool LFAST::CommsService::checkForNewClients()
+{
+    bool newClientFlag = false;
+    // TODO
+    return (newClientFlag);
+}
+
+void LFAST::CommsService::stopDisconnectedClients()
+{
+    auto itr = clients.begin();
+    while (itr != clients.end())
+    {
+        if (!(*itr)->connected())
+        {
+            // TEST_SERIAL.println("Disconnected client.");
+            // TEST_SERIAL.println(ii);
+            (*itr)->stop();
+            itr = clients.erase(itr);
+        }
+        else
+        {
+            itr++;
+        }
+    }
+
+
 }

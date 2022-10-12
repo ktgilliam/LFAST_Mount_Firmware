@@ -10,9 +10,11 @@
 #include <debug.h>
 // #include <initializer_list>
 #include <ArduinoJson.h>
+#include <Arduino.h>
+#include "Client.h"
 
 #define MAX_ARGS 4
-// #define BUFF_SIZE 256
+#define RX_BUFF_SIZE 1024
 
 #define MAX_KV_PAIRS 20
 #define JSON_PROGMEM_SIZE JSON_OBJECT_SIZE(MAX_KV_PAIRS)
@@ -49,29 +51,6 @@ typedef enum
 namespace LFAST
 {
     ///////////////// TYPES /////////////////
-    template <class T>
-    struct MessageHandler
-    {
-        void (*MsgHandlerFn)(T);
-
-        MessageHandler() { this->MsgHandlerFn = nullptr; }
-
-        MessageHandler(void (*ptr)(T))
-        {
-            this->MsgHandlerFn = ptr;
-        }
-
-        bool call(T val)
-        {
-            if (this->MsgHandlerFn)
-            {
-                MsgHandlerFn(val);
-                return true;
-            }
-            return false;
-        }
-    };
-
     class CommsMessage
     {
     public:
@@ -87,17 +66,43 @@ namespace LFAST
         std::string getMessageStr();
         virtual void loadReceivedData(char *rxBuff, unsigned int numBytes);
         // std::string MessageKey;
-        // StaticJsonDocument<JSON_PROGMEM_SIZE> jsonDoc;
+        StaticJsonDocument<JSON_PROGMEM_SIZE> rxJsonDoc;
         // protected:
-        template <typename T>
-        inline T getValue(std::string key);
+        // template <typename T>
+        // inline T getValue(std::string key);
         const char* getBuffPtr(){return jsonInputBuffer;};
-
+        
     protected:
         char jsonInputBuffer[JSON_PROGMEM_SIZE];
-
+        Client *client;
         // char *msgBuff;
     };
+
+
+    template <class T>
+    struct MessageHandler
+    {
+        void (*MsgHandlerFn)(T);
+
+        MessageHandler() { this->MsgHandlerFn = nullptr; }
+
+        MessageHandler(void (*ptr)(T))
+        {
+            this->MsgHandlerFn = ptr;
+        }
+        virtual ~MessageHandler(){};
+
+        bool call(T val)
+        {
+            if (this->MsgHandlerFn)
+            {
+                MsgHandlerFn(val);
+                return true;
+            }
+            return false;
+        }
+    };
+
 
     class CommsService
     {
@@ -105,10 +110,11 @@ namespace LFAST
     protected:
         static void defaultMessageHandler(std::string);
         void errorMessageHandler(CommsMessage &msg);
-
+        std::vector<Client*> clients;
         bool commsServiceStatus;
-        std::vector<CommsMessage> messageQueue;
 
+        // std::vector<CommsMessage> rxMessageQueue;
+        // std::vector<CommsMessage> txMessageQueue;
         // typedef void (*MsgHandlerFn)(CommsMessage *);
         // typedef std::array<MsgHandlerFn, MAX_CTRL_MESSAGES> MessageHandlerList;
         // typedef std::map<std::string, MsgHandlerFn> MessageHandlerList;
@@ -135,16 +141,23 @@ namespace LFAST
     public:
         CommsService();
         virtual ~CommsService() {}
+        bool processNewMessages(Client &client);
+        virtual void sendMessage(CommsMessage &){};
+
 
         template <class T>
         inline bool registerMessageHandler(std::string key, MessageHandler<T> fn);
-
         inline bool callMessageHandler(JsonPair kvp);
+
         virtual bool Status() { return commsServiceStatus; };
         virtual bool checkForNewMessages() { return false; };
-        virtual void sendMessage(CommsMessage &msg){};
-        virtual void processReceived();
-        void clearMessageQueue();
+
+        virtual bool checkForNewClients();
+        virtual void stopDisconnectedClients();
+        // virtual void processReceived();
+        virtual void processReceived(CommsMessage &);
+        // void clearRxMessageQueue();
+        // void queueTxMessage(CommsMessage &);
         // protected:
         //     StaticJsonDocument<500> jsonDoc;
     };

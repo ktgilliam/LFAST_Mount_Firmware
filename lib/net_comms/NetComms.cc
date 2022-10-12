@@ -57,7 +57,7 @@ byte LFAST::EthernetCommsService::mac[6] = {0xDE, 0xAD, 0xBE, 0xEF, 0xFE, 0xED};
 LFAST::EthernetCommsService::EthernetCommsService()
 {
     bool initResult = true;
-
+    connectedClients = 0;
     TEST_SERIAL.println("\nInitializing Ethernet... ");
     getTeensyMacAddr(mac);
     // Ethernet.MACAddress(mac);
@@ -97,7 +97,8 @@ bool LFAST::EthernetCommsService::checkForNewClients()
     bool newClientFlag = false;
     // check for any new client connecting, and say hello (before any incoming data)
     // TEST_SERIAL.print("Checking for new clients");
-    EthernetClient newClient = server.accept();
+    EthernetClient *newClient = &enetClients[connectedClients];
+    *newClient = server.accept();
     if (newClient)
     {
         newClientFlag = true;
@@ -114,11 +115,12 @@ bool LFAST::EthernetCommsService::checkForNewClients()
         //     clients.push_back(newClient);
         //     break;
         // }
+        // newClient.wr
     }
     return (newClientFlag);
 }
 
-void LFAST::EthernetCommsService::checkForNewClientData()
+void LFAST::EthernetCommsService::processNewClientData()
 {
     checkForNewClients();
 
@@ -127,9 +129,9 @@ void LFAST::EthernetCommsService::checkForNewClientData()
 
     for (auto &client : this->clients)
     {
-        if (client.available())
+        if (client->available())
         {
-            checkForNewMessages(client);
+            processNewMessages(*client);
         }
     }
     // for (auto itr = clients.begin(); itr != clients.end(); itr++)
@@ -142,38 +144,6 @@ void LFAST::EthernetCommsService::checkForNewClientData()
     stopDisconnectedClients();
 }
 
-void LFAST::EthernetCommsService::stopDisconnectedClients()
-{
-    // stop any clients which disconnect
-    // for (auto &client : this->clients)
-    // {
-    //     if (!client.connected())
-    //     {
-    //         TEST_SERIAL.print("disconnect client #");
-    //         // TEST_SERIAL.println(ii);
-    //         client.stop();
-    //     }
-    // }
-
-    // this->clients.erase(std::remove_if(this->clients.begin(), this->clients.end(), 
-    //                    [](EthernetClient client) { return !client.connected(); }), this->clients.end());
-
-    auto itr = clients.begin();
-    while (itr != clients.end())
-    {
-        if (!(*itr).connected())
-        {
-            // TEST_SERIAL.println("Disconnected client.");
-            // TEST_SERIAL.println(ii);
-            (*itr).stop();
-            itr = clients.erase(itr);
-        }
-        else
-        {
-            itr++;
-        }
-    }
-}
 ///////////////////////////////////////////////////////////////////////////////////////////////////////
 ////////////////////////// LOCAL/PRIVATE FUNCTIONS ////////////////////////////////////////////////////
 ///////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -184,49 +154,6 @@ void LFAST::EthernetCommsService::getTeensyMacAddr(uint8_t *mac)
         mac[by] = (HW_OCOTP_MAC1 >> ((1 - by) * 8)) & 0xFF;
     for (uint8_t by = 0; by < 4; by++)
         mac[by + 2] = (HW_OCOTP_MAC0 >> ((3 - by) * 8)) & 0xFF;
-}
-
-bool LFAST::EthernetCommsService::checkForNewMessages(EthernetClient &client)
-{
-    // listen for incoming clients
-    if (client)
-    {
-        uint8_t readBuff[RX_BUFF_SIZE];
-        memset(readBuff, 0, RX_BUFF_SIZE);
-        unsigned int bytesRead = 0;
-        while (client.connected())
-        {
-            // TEST_SERIAL.println("Checking connected client messages");
-            if (client.available())
-            {
-                char c = client.read();
-                // TEST_SERIAL.print(c);
-                // TEST_SERIAL.printf("%u ", (unsigned int) c);
-                // if (c == '\0') TEST_SERIAL.printf("%u ", (unsigned int) c);
-                
-                if ((c == '\0') || (bytesRead >= RX_BUFF_SIZE))
-                {
-                    // NetCommsMessage newMsg;
-                    // TEST_SERIAL.printf("\nReceived Data: [%s]\r\n", (char *)readBuff);
-                    // auto newMsg = new NetCommsMessage();
-                    NetCommsMessage newMsg;
-                    newMsg.loadReceivedData((char *)readBuff, bytesRead);
-
-                    // TEST_SERIAL.println("Parsing done.");
-                    this->messageQueue.push_back(newMsg);
-                    break;
-                }
-                else
-                {
-                    readBuff[bytesRead++] = c;
-                }
-            }
-        }
-        delay(1);
-        // close the connection:
-        // client.stop();
-    }
-    return true;
 }
 
 void LFAST::EthernetCommsService::sendMessage(CommsMessage &msg)

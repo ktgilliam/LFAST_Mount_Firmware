@@ -31,15 +31,15 @@ void initMountControl()
 void serviceMountControl()
 {
     // listen for incoming Ethernet connections:
-    commsService->checkForNewClientData();
-    commsService->processReceived();
+    commsService->processNewClientData();
+    // commsService->processReceived();
 }
 
 void handshake(unsigned int val)
 {
-
+    LFAST::CommsMessage newMsg;
     TEST_SERIAL.print("Shaking the hand!\r\n");
-    if(val == 0xDEAD)
+    if (val == 0xDEAD)
     {
         // TODO: Generate message
     }
@@ -47,6 +47,7 @@ void handshake(unsigned int val)
     {
         // TODO: Generate error
     }
+    // commsService->txMessageQueue.push_back(newMsg);
+    return;
     // commsService->sendMessage(handshakeMsg);
 }
-
