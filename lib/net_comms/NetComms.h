@@ -3,7 +3,7 @@
 #include <cstdint>
 #include <NativeEthernet.h>
 #include <CommService.h>
-
+#include <list>
 
 #define PORT 4400
 
@@ -34,8 +34,9 @@ namespace LFAST
         
         // std::vector<NetCommsMessage *> netMessageQueue;
         // std::vector<EthernetClient> enetClients;
-        EthernetClient enetClients[MAX_CLIENTS];
-        uint8_t connectedClients;
+        // EthernetClient enetClients[MAX_CLIENTS];
+        std::list<EthernetClient> enetClients;
+        // uint8_t connectedClients;
         
     public:
         EthernetCommsService();

@@ -57,7 +57,6 @@ byte LFAST::EthernetCommsService::mac[6] = {0xDE, 0xAD, 0xBE, 0xEF, 0xFE, 0xED};
 LFAST::EthernetCommsService::EthernetCommsService()
 {
     bool initResult = true;
-    connectedClients = 0;
     TEST_SERIAL.println("\nInitializing Ethernet... ");
     getTeensyMacAddr(mac);
     // Ethernet.MACAddress(mac);
@@ -97,15 +96,18 @@ bool LFAST::EthernetCommsService::checkForNewClients()
     bool newClientFlag = false;
     // check for any new client connecting, and say hello (before any incoming data)
     // TEST_SERIAL.print("Checking for new clients");
-    EthernetClient *newClient = &enetClients[connectedClients];
-    *newClient = server.accept();
+    // EthernetClient *newClient = &enetClients[connectedClients];
+
+    EthernetClient newClient = server.accept();
     if (newClient)
     {
+        enetClients.push_back(newClient);
         newClientFlag = true;
         TEST_SERIAL.printf("New client # %d\r\n", clients.size() + 1);
         // Once we "accept", the client is no longer tracked by EthernetServer
         // so we must store it into our list of clients
-        clients.push_back(newClient);
+
+        clients.push_back(&enetClients.back());
 
         // for (byte ii = 0; ii < clients.size(); ii++)
         // {
