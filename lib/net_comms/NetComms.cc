@@ -95,56 +95,20 @@ bool LFAST::EthernetCommsService::checkForNewClients()
 {
     bool newClientFlag = false;
     // check for any new client connecting, and say hello (before any incoming data)
-    // TEST_SERIAL.print("Checking for new clients");
-    // EthernetClient *newClient = &enetClients[connectedClients];
-
     EthernetClient newClient = server.accept();
     if (newClient)
     {
-        enetClients.push_back(newClient);
         newClientFlag = true;
-        TEST_SERIAL.printf("New client # %d\r\n", clients.size() + 1);
+        TEST_SERIAL.printf("New connection # %d\r\n", connections.size() + 1);
         // Once we "accept", the client is no longer tracked by EthernetServer
         // so we must store it into our list of clients
-
-        clients.push_back(&enetClients.back());
-
-        // for (byte ii = 0; ii < clients.size(); ii++)
-        // {
-        //     TEST_SERIAL.println(ii);
-        //     // Once we "accept", the client is no longer tracked by EthernetServer
-        //     // so we must store it into our list of clients
-        //     clients.push_back(newClient);
-        //     break;
-        // }
-        // newClient.wr
+        enetClients.push_back(newClient);
+        setupClientMessageBuffers(&enetClients.back());
     }
     return (newClientFlag);
 }
 
-void LFAST::EthernetCommsService::processNewClientData()
-{
-    checkForNewClients();
 
-    // check for incoming data from all clients
-    // for (byte ii = 0; ii < MAX_CLIENTS; ii++)
-
-    for (auto &client : this->clients)
-    {
-        if (client->available())
-        {
-            processNewMessages(*client);
-        }
-    }
-    // for (auto itr = clients.begin(); itr != clients.end(); itr++)
-    // {
-    //     if ((*itr).available())
-    //     {
-    //         checkForNewMessages(*itr);
-    //     }
-    // }
-    stopDisconnectedClients();
-}
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////////
 ////////////////////////// LOCAL/PRIVATE FUNCTIONS ////////////////////////////////////////////////////
@@ -156,9 +120,4 @@ void LFAST::EthernetCommsService::getTeensyMacAddr(uint8_t *mac)
         mac[by] = (HW_OCOTP_MAC1 >> ((1 - by) * 8)) & 0xFF;
     for (uint8_t by = 0; by < 4; by++)
         mac[by + 2] = (HW_OCOTP_MAC0 >> ((3 - by) * 8)) & 0xFF;
-}
-
-void LFAST::EthernetCommsService::sendMessage(CommsMessage &msg)
-{
-    // std::string msgStr = msg.getMessageStr();
 }

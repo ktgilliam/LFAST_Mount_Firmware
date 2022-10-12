@@ -41,15 +41,12 @@ namespace LFAST
     public:
         EthernetCommsService();
 
-        void processNewClientData();
-
         // Overloaded functions:
 
         bool Status() { return this->commsServiceStatus; };
         // bool checkForNewMessages(){return false;}
         // bool checkForNewMessages(EthernetClient &client);
         bool checkForNewClients() override;
-        virtual void sendMessage(CommsMessage &) override;
         // virtual void sendMessage(CommsMessage<int> msg){};
     };
 }

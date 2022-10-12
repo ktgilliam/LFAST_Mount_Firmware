@@ -31,8 +31,10 @@ void initMountControl()
 void serviceMountControl()
 {
     // listen for incoming Ethernet connections:
-    commsService->processNewClientData();
-    // commsService->processReceived();
+    commsService->checkForNewClients();
+    commsService->checkForNewClientData();
+    commsService->processClientData();
+    commsService->stopDisconnectedClients();
 }
 
 void handshake(unsigned int val)
@@ -41,7 +43,13 @@ void handshake(unsigned int val)
     TEST_SERIAL.print("Shaking the hand!\r\n");
     if (val == 0xDEAD)
     {
-        // TODO: Generate message
+        // char json[] =
+        //     "{\"sensor\":\"gps\",\"time\":1351824120,\"data\":[48.756080,2.302038]}";
+        // std::memcpy(newMsg.jsonInputBuffer, json, sizeof(json));
+        // newMsg.deserialize();
+
+        newMsg.addKeyValuePair<unsigned int>("Handshake", 0xBEEF);
+        commsService->sendMessage(newMsg, LFAST::CommsService::ACTIVE_CONNECTION);
     }
     else
     {

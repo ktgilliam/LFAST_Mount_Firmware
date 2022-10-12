@@ -57,27 +57,27 @@ namespace LFAST
         // CommsMessage(){}
         CommsMessage()
         {
-             
-            // std::memset(this->msgBuff, 0, sizeof(this->msgBuff));
+            std::memset(this->jsonInputBuffer, 0, sizeof(this->jsonInputBuffer));
         }
         virtual ~CommsMessage() {} // TEST_SERIAL.println("Destructor called."); delete[] msgBuff;}
         virtual void placeholder() {}
         void printMessageInfo();
         std::string getMessageStr();
-        virtual void loadReceivedData(char *rxBuff, unsigned int numBytes);
         // std::string MessageKey;
-        StaticJsonDocument<JSON_PROGMEM_SIZE> rxJsonDoc;
-        // protected:
-        // template <typename T>
-        // inline T getValue(std::string key);
-        const char* getBuffPtr(){return jsonInputBuffer;};
-        
-    protected:
+        StaticJsonDocument<JSON_PROGMEM_SIZE> &getJsonDoc() { return this->JsonDoc; }
+        StaticJsonDocument<JSON_PROGMEM_SIZE> &deserialize();
+        template <typename T>
+        inline T getValue(std::string key);
+        template <typename T>
+        inline void addKeyValuePair(std::string key, T val){JsonDoc[key] = val;};
+        const char *getBuffPtr() { return jsonInputBuffer; };
         char jsonInputBuffer[JSON_PROGMEM_SIZE];
-        Client *client;
+
+    protected:
+        StaticJsonDocument<JSON_PROGMEM_SIZE> JsonDoc;
+        // Client *client;
         // char *msgBuff;
     };
-
 
     template <class T>
     struct MessageHandler
@@ -103,14 +103,21 @@ namespace LFAST
         }
     };
 
-
+    struct ClientConnection
+    {
+        ClientConnection(Client *_client) : client(_client) {}
+        Client *client;
+        std::vector<CommsMessage> rxMessageQueue;
+        std::vector<CommsMessage> txMessageQueue;
+    };
     class CommsService
     {
 
     protected:
         static void defaultMessageHandler(std::string);
         void errorMessageHandler(CommsMessage &msg);
-        std::vector<Client*> clients;
+        static std::vector<ClientConnection> connections;
+        ClientConnection *activeConnection;
         bool commsServiceStatus;
 
         // std::vector<CommsMessage> rxMessageQueue;
@@ -141,21 +148,30 @@ namespace LFAST
     public:
         CommsService();
         virtual ~CommsService() {}
-        bool processNewMessages(Client &client);
-        virtual void sendMessage(CommsMessage &){};
 
+        void setupClientMessageBuffers(Client *client);
+        bool getNewMessages(ClientConnection &);
+        enum
+        {
+            ACTIVE_CONNECTION = 1,
+            ALL_CONNECTED = 2,
+        };
+        virtual void sendMessage(CommsMessage &, uint8_t);
 
         template <class T>
         inline bool registerMessageHandler(std::string key, MessageHandler<T> fn);
         inline bool callMessageHandler(JsonPair kvp);
 
         virtual bool Status() { return commsServiceStatus; };
-        virtual bool checkForNewMessages() { return false; };
+        // virtual bool checkForNewMessages() { return false; };
 
         virtual bool checkForNewClients();
         virtual void stopDisconnectedClients();
         // virtual void processReceived();
-        virtual void processReceived(CommsMessage &);
+        void checkForNewClientData();
+        virtual void processClientData();
+        virtual void processMessage(CommsMessage &);
+
         // void clearRxMessageQueue();
         // void queueTxMessage(CommsMessage &);
         // protected:
@@ -264,33 +280,33 @@ namespace LFAST
         return true;
     }
 
-    // template <>
-    // inline double CommsMessage::getValue(std::string key)
-    // {
-    //     return (jsonDoc[key.c_str()].as<double>());
-    // }
+    template <>
+    inline double CommsMessage::getValue(std::string key)
+    {
+        return (JsonDoc[key.c_str()].as<double>());
+    }
 
-    // template <>
-    // inline int CommsMessage::getValue(std::string key)
-    // {
-    //     return (jsonDoc[key.c_str()].as<int>());
-    // }
+    template <>
+    inline int CommsMessage::getValue(std::string key)
+    {
+        return (JsonDoc[key.c_str()].as<int>());
+    }
 
-    // template <>
-    // inline unsigned int CommsMessage::getValue(std::string key)
-    // {
-    //     return (jsonDoc[key.c_str()].as<unsigned int>());
-    // }
+    template <>
+    inline unsigned int CommsMessage::getValue(std::string key)
+    {
+        return (JsonDoc[key.c_str()].as<unsigned int>());
+    }
 
-    // template <>
-    // inline bool CommsMessage::getValue(std::string key)
-    // {
-    //     return (jsonDoc[key.c_str()].as<bool>());
-    // }
+    template <>
+    inline bool CommsMessage::getValue(std::string key)
+    {
+        return (JsonDoc[key.c_str()].as<bool>());
+    }
 
-    // template <>
-    // inline std::string CommsMessage::getValue(std::string key)
-    // {
-    //     return (std::string(jsonDoc[key.c_str()].as<const char *>()));
-    // }
+    template <>
+    inline std::string CommsMessage::getValue(std::string key)
+    {
+        return (std::string(JsonDoc[key.c_str()].as<const char *>()));
+    }
 }

@@ -34,10 +34,10 @@ with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
     # s.sendall(txStr.encode('utf-8'))
     # print("Sending: "+txStr)
     
-    # data = s.recv(1024)
-    # s.close()
+    data = s.recv(1024)
+    s.close()
 
-# print(f"Received {data!r}")
+print(f"Received {data!r}")
 
 # print(f"Received {data!r}")
 
