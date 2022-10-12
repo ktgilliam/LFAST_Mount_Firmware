@@ -43,23 +43,24 @@ with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as server:
                 break
             # print(data)
             dataStr = data.decode()
-            # print(dataStr)
+            print(dataStr)
+            # break
             # print(msgJson["MountMessage"])
             # print(msgJson["MountMessage"]["Handshake"])
             if handshook == False:
                 doSend = True
                 msgJson = json.loads(dataStr)
-                handshakeStr = msgJson["MountMessage"]["Handshake"]
-                handshakeVal = int(handshakeStr, 16)
+                # handshakeStr = msgJson["MountMessage"]["Handshake"]
+                handshakeVal = msgJson["MountMessage"]["Handshake"]
+                # print(type(handshakeStr),"::"+handshakeStr)
+                # handshakeVal = int(handshakeStr, 16)
                 # print(hex(handshakeVal))
                 if handshakeVal == 0xDEAD:
-                    handshakeMsgJson = {
-                        "KarbonMessage" : {
-                            "Handshake": 0xbeef
-                        }
-                    }
+                    handshakeReplyJson = {}
+                    handshakeReplyJson["KarbonMessage"] = {}
+                    handshakeReplyJson["KarbonMessage"]["Handshake"] = 0xBEEF
                     handshook = True
-                    handshakeMsgStr = json.dumps(handshakeMsgJson)
+                    handshakeMsgStr = json.dumps(handshakeReplyJson)
                     txStr = handshakeMsgStr+"\0"
                     client_socket.sendall(txStr.encode('utf-8'))
 

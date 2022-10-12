@@ -5,14 +5,15 @@
 #include <device.h>
 #include <debug.h>
 
-EthernetCommsService *commsService;
+LFAST::EthernetCommsService *commsService;
 
 // Message Handlers:
-void handshake(CommsMessage &handshakeMsg);
+void handshake(unsigned int val);
 
 void initMountControl()
 {
-    commsService = new EthernetCommsService();
+    TEST_SERIAL.printf("\r\n\r\n\r\n\r\n##########################################################\r\n");
+    commsService = new LFAST::EthernetCommsService();
 
     if (!commsService->Status())
     {
@@ -23,7 +24,8 @@ void initMountControl()
             ;
         }
     }
-    commsService->registerMessageHandler(99, handshake);
+    commsService->registerMessageHandler<unsigned int>("Handshake", handshake);
+    // TEST_SERIAL.println("Device Setup Complete.");
 }
 
 void serviceMountControl()
@@ -33,9 +35,18 @@ void serviceMountControl()
     commsService->processReceived();
 }
 
-void handshake(CommsMessage &handshakeMsg)
+void handshake(unsigned int val)
 {
+
     TEST_SERIAL.print("Shaking the hand!\r\n");
-    commsService->sendMessage(handshakeMsg);
+    if(val == 0xDEAD)
+    {
+        // TODO: Generate message
+    }
+    else
+    {
+        // TODO: Generate error
+    }
+    // commsService->sendMessage(handshakeMsg);
 }
 
