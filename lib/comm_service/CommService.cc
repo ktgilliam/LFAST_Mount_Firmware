@@ -84,6 +84,7 @@ bool LFAST::CommsService::getNewMessages(ClientConnection &connection)
             if (client->available())
             {
                 char c = client->read();
+
                 if ((c == '\0') || (bytesRead >= RX_BUFF_SIZE))
                 {
                     connection.rxMessageQueue.push_back(newMsg);
@@ -91,10 +92,12 @@ bool LFAST::CommsService::getNewMessages(ClientConnection &connection)
                 }
                 else
                 {
+                    // TEST_SERIAL.print(c);
                     newMsg.jsonInputBuffer[bytesRead++] = c;
                 }
             }
         }
+        TEST_SERIAL.println("");
     }
     return true;
 }
@@ -126,9 +129,6 @@ void LFAST::CommsService::processClientData()
 }
 void LFAST::CommsService::processMessage(CommsMessage &msg)
 {
-
-    // StaticJsonDocument<JSON_PROGMEM_SIZE> jsonDoc;
-    // msg.printMessageInfo();
     StaticJsonDocument<JSON_PROGMEM_SIZE> &doc = msg.deserialize();
     JsonObject msgRoot = doc.as<JsonObject>();
     JsonObject msgObject = msgRoot["MountMessage"];
@@ -136,8 +136,8 @@ void LFAST::CommsService::processMessage(CommsMessage &msg)
 
     for (JsonPair kvp : msgObject)
     {
-        auto keyStr = kvp.key().c_str();
-        TEST_SERIAL.printf("Processing Key: %s\r\n", keyStr);
+        // auto keyStr = kvp.key().c_str();
+        // TEST_SERIAL.printf("Processing Key: %s\r\n", keyStr);
         this->callMessageHandler(kvp);
     }
 }
@@ -202,6 +202,7 @@ void LFAST::CommsService::sendMessage(CommsMessage &msg, uint8_t sendOpt)
         WriteBufferingStream bufferedClient(*(activeConnection->client), std::strlen(msg.getBuffPtr()));
         serializeJson(msg.getJsonDoc(), bufferedClient);
         bufferedClient.flush();
+        activeConnection->client->write('\0');
     }
     else
     {
@@ -227,7 +228,6 @@ void LFAST::CommsService::stopDisconnectedClients()
         if (!(*itr).client->connected())
         {
             // TEST_SERIAL.println("Disconnected client.");
-            // TEST_SERIAL.println(ii);
             (*itr).client->stop();
             itr = connections.erase(itr);
         }
