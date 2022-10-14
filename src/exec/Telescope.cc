@@ -4,143 +4,198 @@
 
 #include <device.h>
 #include <debug.h>
+#include <cmath>
 
-LFAST::EthernetCommsService *commsService;
-
-Telescope scopeData;
-
-// Message Handlers:
-void handshake(unsigned int val);
-void updateTime(double indiTimeStamp);
-void sendAzElPositions(double indiTimeStamp);
-void sendParkedStatus(double indiTimeStamp);
-void sendTrackRate(double indiTimeStamp);
-void parkScope(double indiTimeStamp);
-void unparkScope(double indiTimeStamp);
-void initMountControl()
+LFAST::MountControl::MountControl()
 {
-    TEST_SERIAL.printf("\r\n\r\n\r\n\r\n##########################################################\r\n");
-    commsService = new LFAST::EthernetCommsService();
+#if SIM_SCOPE_ENABLED
+    initSimMount();
+#endif
+}
 
-    if (!commsService->Status())
+void LFAST::MountControl::printMountStatus()
+{
+    // TEST_SERIAL.printf("\033[32m");
+    TEST_SERIAL.printf("\033[%u;%uH", 10, 0);
+    TEST_SERIAL.printf("\033[37mINDI Time:\033[20G%8.4f\r\n", this->indiTime);
+    TEST_SERIAL.printf("\033[0K\033[37mMount Status:\033[22G");
+    switch (this->mountStatus)
     {
-        TEST_SERIAL.println("Device Setup Failed.");
-        while (true)
+    case LFAST::MountControl::MOUNT_IDLE:
+        TEST_SERIAL.println("\033[33mIDLE");
+        break;
+    case LFAST::MountControl::MOUNT_PARKING:
+        TEST_SERIAL.println("\033[31mPARKING");
+        break;
+    case LFAST::MountControl::MOUNT_HOMING:
+        TEST_SERIAL.println("\033[31mHOMING");
+        break;
+    case LFAST::MountControl::MOUNT_SLEWING:
+        TEST_SERIAL.println("\033[32mSLEWING");
+        break;
+    case LFAST::MountControl::MOUNT_PARKED:
+        TEST_SERIAL.println("\033[37mPARKED");
+        break;
+    }
+    TEST_SERIAL.println();
+
+    TEST_SERIAL.printf("\033[37mCurrent Altitude:\033[20G%8.4f\033[0K\r\n", this->currentAltPosn);
+    TEST_SERIAL.printf("\033[37mTarget Altitude:\033[20G%8.4f\033[0K\r\n", this->targetAltPosn);
+    TEST_SERIAL.printf("\033[37mAltitude Rate:\033[20G%8.4f\033[0K\r\n", this->altRate_dps);
+    TEST_SERIAL.println();
+
+    TEST_SERIAL.printf("\033[37mCurrent Azimuth:\033[20G%8.4f\033[0K\r\n", this->currentAzPosn);
+    TEST_SERIAL.printf("\033[37mTarget Azimuth:\033[20G%8.4f\033[0K\r\n", this->targetAzPosn);
+    TEST_SERIAL.printf("\033[37mAzimuth Rate:\033[20G%8.4f\033[0K\r\n", this->azRate_dps);
+    TEST_SERIAL.println();
+}
+
+void LFAST::MountControl::findHome()
+{
+    mountStatus = LFAST::MountControl::MOUNT_HOMING;
+#if SIM_SCOPE_ENABLED
+    targetAzPosn = 0.0;
+    targetAltPosn = 0.0;
+#else
+#warning HOMING NOT IMPLEMENTED
+#endif
+}
+
+void LFAST::MountControl::park()
+{
+    mountStatus = LFAST::MountControl::MOUNT_PARKING;
+    targetAltPosn = altParkPosn;
+    targetAzPosn = azParkPosn;
+#if SIM_SCOPE_ENABLED
+#else
+#warning PARKING NOT IMPLEMENTED
+#endif
+}
+
+void LFAST::MountControl::unpark()
+{
+    mountStatus = LFAST::MountControl::MOUNT_IDLE;
+#if SIM_SCOPE_ENABLED
+#else
+#warning UNPARKING NOT IMPLEMENTED
+#endif
+}
+
+void LFAST::MountControl::gotoAlt(double tgtAltPosn)
+{
+    if (mountStatus != MOUNT_PARKED)
+    {
+        targetAltPosn = tgtAltPosn;
+        mountStatus = MOUNT_SLEWING;
+        CURSOR_TO_DEBUG_ROW(0);
+        TEST_SERIAL.printf("Updating target Alt %4.6f...", tgtAltPosn);
+    }
+
+#if SIM_SCOPE_ENABLED
+#else
+#warning GOTO (ALT) NOT IMPLEMENTED
+#endif
+}
+
+void LFAST::MountControl::gotoAz(double tgtAzPosn)
+{
+    if (mountStatus != MOUNT_PARKED)
+    {
+        targetAzPosn = tgtAzPosn;
+        mountStatus = MOUNT_SLEWING;
+        CURSOR_TO_DEBUG_ROW(1);
+        TEST_SERIAL.printf("Updating target Az %4.6f...", tgtAzPosn);
+    }
+
+#if SIM_SCOPE_ENABLED
+#else
+#warning GOTO (ALT) NOT IMPLEMENTED
+#endif
+}
+
+double LFAST::MountControl::getTrackRate()
+{
+    return std::sqrt(azRate_dps * azRate_dps + altRate_dps * altRate_dps) / 3200.0;
+}
+
+void LFAST::MountControl::initSimMount()
+{
+    this->mountStatus = MOUNT_PARKED;
+    currentAltPosn = altParkPosn;
+    currentAzPosn = azParkPosn;
+}
+
+void LFAST::MountControl::abortSlew()
+{
+    mountStatus = MOUNT_IDLE;
+#if SIM_SCOPE_ENABLED
+#else
+#warning ABORT (ALT) NOT IMPLEMENTED
+#endif
+}
+
+void LFAST::MountControl::updateSimMount(double time)
+{
+    indiTime = time;
+
+    CURSOR_TO_DEBUG_ROW(0);
+    // TEST_SERIAL.println("Updating sim...");
+
+    double AltPosnErr = targetAltPosn - currentAltPosn;
+    double AzPosnErr = targetAzPosn - currentAzPosn;
+
+    switch (mountStatus)
+    {
+    case LFAST::MountControl::MOUNT_PARKED:
+        // Intentional fall-through
+    case LFAST::MountControl::MOUNT_IDLE:
+        altRate_dps = 0.0;
+        azRate_dps = 0.0;
+        break;
+    case LFAST::MountControl::MOUNT_PARKING:
+        // Intentional fall-through
+    case LFAST::MountControl::MOUNT_HOMING:
+        // Intentional fall-through
+    case LFAST::MountControl::MOUNT_SLEWING:
+        if (std::abs(AltPosnErr) < DEFAULT_ALT_RATE)
         {
-            ;
-            ;
+            AltPosnErr = 0.0;
+            altRate_dps = 0.0;
+            currentAltPosn = targetAltPosn;
         }
-    }
-    commsService->registerMessageHandler<unsigned int>("Handshake", handshake);
-    commsService->registerMessageHandler<double>("time", updateTime);
-    commsService->registerMessageHandler<double>("RequestAltAz", sendAzElPositions);
-    commsService->registerMessageHandler<double>("IsParked", sendParkedStatus);
-    commsService->registerMessageHandler<double>("getTrackRate", sendParkedStatus);
-    commsService->registerMessageHandler<double>("Park", parkScope);
-    commsService->registerMessageHandler<double>("Unpark", unparkScope);
-}
 
-void serviceMountControl()
-{
-    // listen for incoming Ethernet connections:
-    commsService->checkForNewClients();
-    commsService->checkForNewClientData();
-    commsService->processClientData();
-    commsService->stopDisconnectedClients();
-}
-
-void handshake(unsigned int val)
-{
-    LFAST::CommsMessage newMsg;
-    TEST_SERIAL.print("Shaking the hand!\r\n");
-    if (val == 0xDEAD)
-    {
-        // char json[] =
-        //     "{\"sensor\":\"gps\",\"time\":1351824120,\"data\":[48.756080,2.302038]}";
-        // std::memcpy(newMsg.jsonInputBuffer, json, sizeof(json));
-        // newMsg.deserialize();
-
-        newMsg.addKeyValuePair<unsigned int>("Handshake", 0xBEEF);
-        commsService->sendMessage(newMsg, LFAST::CommsService::ACTIVE_CONNECTION);
-    }
-    else
-    {
-        // TODO: Generate error
-    }
-    // commsService->txMessageQueue.push_back(newMsg);
-    return;
-    // commsService->sendMessage(handshakeMsg);
-}
-
-void updateTime(double indiTimeStamp)
-{
-    TEST_SERIAL.print("Sync'd time.\r\n");
-    scopeData.indiTime = indiTimeStamp;
-}
-
-void sendAzElPositions(double indiTimeStamp)
-{
-    LFAST::CommsMessage newMsg;
-
-#if SIM_SCOPE_ENABLED
-    scopeData.azPosn += 0.1;
-    scopeData.elPosn += 0.001;
-#endif
-    scopeData.indiTime = indiTimeStamp;
-
-    newMsg.addKeyValuePair<double>("AzPosition", scopeData.azPosn);
-    newMsg.addKeyValuePair<double>("ElPosition", scopeData.elPosn);
-    commsService->sendMessage(newMsg, LFAST::CommsService::ACTIVE_CONNECTION);
-}
-
-void sendParkedStatus(double indiTimeStamp)
-{
-#if SIM_SCOPE_ENABLED
-    if (scopeData.scopeStatus == Telescope::SCOPE_PARKING)
-    {
-        if (scopeData.parkingCounter++ >= SCOPE_PARK_TIME_COUNT)
+        if (AzPosnErr > M_PI)
         {
-            scopeData.isParked = true;
-            scopeData.scopeStatus = Telescope::SCOPE_IDLE;
+            AzPosnErr -= (2*M_PI);
         }
+        
+        if (std::abs(AzPosnErr) < DEFAULT_AZ_RATE)
+        {
+            AzPosnErr = 0.0;
+            azRate_dps = 0.0;
+            currentAzPosn = targetAzPosn;
+        }
+        if (AltPosnErr == 0.0 && AzPosnErr == 0.0)
+        {
+            mountStatus = MOUNT_IDLE;
+        }
+        else
+        {
+            altRate_dps = (AltPosnErr > 0) ? DEFAULT_ALT_RATE : -1 * DEFAULT_ALT_RATE;
+            azRate_dps = (AzPosnErr > 0) ? DEFAULT_AZ_RATE : -1 * DEFAULT_AZ_RATE;
+
+            currentAltPosn += altRate_dps;
+            if (currentAltPosn > (2 * M_PI))
+                currentAltPosn -= (2 * M_PI);
+            else if (currentAltPosn < 0)
+                currentAltPosn += (2 * M_PI);
+
+            currentAzPosn += azRate_dps;
+            if (currentAzPosn > (2 * M_PI))
+                currentAzPosn -= (2 * M_PI);
+            else if (currentAzPosn < 0)
+                currentAzPosn += (2 * M_PI);
+        }
+        break;
     }
-
-#endif
-    scopeData.indiTime = indiTimeStamp;
-    LFAST::CommsMessage newMsg;
-    newMsg.addKeyValuePair<bool>("IsParked", scopeData.isParked);
-    commsService->sendMessage(newMsg, LFAST::CommsService::ACTIVE_CONNECTION);
-}
-
-void sendTrackRate(double indiTimeStamp)
-{
-    scopeData.indiTime = indiTimeStamp;
-    LFAST::CommsMessage newMsg;
-    newMsg.addKeyValuePair<double>("TrackRate", scopeData.trackRate);
-    commsService->sendMessage(newMsg, LFAST::CommsService::ACTIVE_CONNECTION);
-}
-
-void parkScope(double indiTimeStamp)
-{
-#if SIM_SCOPE_ENABLED
-    scopeData.scopeStatus = Telescope::SCOPE_PARKING;
-    scopeData.parkingCounter = 0;
-#endif
-    scopeData.indiTime = indiTimeStamp;
-
-    LFAST::CommsMessage newMsg;
-    newMsg.addKeyValuePair<std::string>("Park", "$OK^");
-    commsService->sendMessage(newMsg, LFAST::CommsService::ACTIVE_CONNECTION);
-}
-
-void unparkScope(double indiTimeStamp)
-{
-#if SIM_SCOPE_ENABLED
-    scopeData.isParked = false;
-#endif
-    scopeData.indiTime = indiTimeStamp;
-
-    LFAST::CommsMessage newMsg;
-    newMsg.addKeyValuePair<std::string>("Park", "$OK^");
-    commsService->sendMessage(newMsg, LFAST::CommsService::ACTIVE_CONNECTION);
 }

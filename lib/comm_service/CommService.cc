@@ -71,33 +71,53 @@ void LFAST::CommsService::checkForNewClientData()
 
 bool LFAST::CommsService::getNewMessages(ClientConnection &connection)
 {
-    //
+    // static unsigned int msgCount = 0;
     // listen for incoming clients
     Client *client = connection.client;
     if (client)
     {
-        CommsMessage newMsg;
+        // TEST_SERIAL.println("\r\n");
+        // TEST_SERIAL.printf("\r\n%u:", msgCount++);
+        // CommsMessage newMsg;
+        auto newMsg = new CommsMessage();
         unsigned int bytesRead = 0;
+        bool readingObject = false, objectDone = false;
+        int openObjectsCnt = 0;
+
         while (client->connected())
         {
             // TEST_SERIAL.println("Checking connected client messages");
             if (client->available())
             {
                 char c = client->read();
-
-                if ((c == '\0') || (bytesRead >= RX_BUFF_SIZE))
+                newMsg->jsonInputBuffer[bytesRead++] = c;
+                if (c == '{')
                 {
-                    connection.rxMessageQueue.push_back(newMsg);
-                    break;
+                    if (!readingObject)
+                        readingObject = true;
+                    openObjectsCnt++;
                 }
-                else
+                if ((c == '}') && (readingObject))
                 {
-                    // TEST_SERIAL.print(c);
-                    newMsg.jsonInputBuffer[bytesRead++] = c;
+                    readingObject = true;
+                    openObjectsCnt--;
+                    if (openObjectsCnt == 0)
+                        objectDone = true;
+                }
+                // TEST_SERIAL.print(c);
+                if (objectDone)
+                {
+                    newMsg->jsonInputBuffer[bytesRead + 1] = '\0';
+                    // TEST_SERIAL.printf(" [%u bytes]\r\n", bytesRead);
+
+                    connection.rxMessageQueue.push_back(newMsg);
+
+                    // TEST_SERIAL.println("Received Message:");
+                    // newMsg->printMessageInfo();
+                    break;
                 }
             }
         }
-        TEST_SERIAL.println("");
     }
     return true;
 }
@@ -105,9 +125,26 @@ bool LFAST::CommsService::getNewMessages(ClientConnection &connection)
 void LFAST::CommsMessage::printMessageInfo()
 {
 
-    TEST_SERIAL.println("MESSAGE INFO:");
-    TEST_SERIAL.printf("\tID: %u\r\n", (unsigned int)this->getBuffPtr());
-    TEST_SERIAL.printf("\tJSON: %s\r\n", this->jsonInputBuffer);
+    TEST_SERIAL.printf("\tMESSAGE ID: %u\r\n", (unsigned int)this->getBuffPtr());
+    // TEST_SERIAL.printf("\tMESSAGE Input Buffer: %s (%u bytes)\r\n", this->jsonInputBuffer, std::strlen(this->jsonInputBuffer));
+    TEST_SERIAL.print("\tMESSAGE Input Buffer: ");
+
+    bool nullTermFound = false;
+    unsigned int ii = 0;
+    while (!nullTermFound && ii < JSON_PROGMEM_SIZE)
+    {
+        char c2 = this->jsonInputBuffer[ii++];
+        if (c2 != '\0')
+        {
+            TEST_SERIAL.printf("%c", c2);
+        }
+        else
+        {
+            nullTermFound = true;
+            TEST_SERIAL.printf("%s[%u]\r\n", "\\0", ii);
+        }
+    }
+
     // serializeJson(jsonDoc, TEST_SERIAL);
     // TEST_SERIAL.printf("\tBytes: %u\r\n", measureJson(jsonDoc));
     TEST_SERIAL.println("");
@@ -122,14 +159,20 @@ void LFAST::CommsService::processClientData()
         while (itr != conn.rxMessageQueue.end())
         {
             processMessage(*itr);
+            delete *itr;
             itr = conn.rxMessageQueue.erase(itr);
         }
     }
     this->activeConnection = nullptr;
 }
-void LFAST::CommsService::processMessage(CommsMessage &msg)
+void LFAST::CommsService::processMessage(CommsMessage *msg)
 {
-    StaticJsonDocument<JSON_PROGMEM_SIZE> &doc = msg.deserialize();
+    if (msg->hasBeenProcessed())
+    {
+        TEST_SERIAL.println("This was the problem.");
+        return;
+    }
+    StaticJsonDocument<JSON_PROGMEM_SIZE> &doc = msg->deserialize();
     JsonObject msgRoot = doc.as<JsonObject>();
     JsonObject msgObject = msgRoot["MountMessage"];
     // Test if parsing succeeds.
@@ -140,6 +183,7 @@ void LFAST::CommsService::processMessage(CommsMessage &msg)
         // TEST_SERIAL.printf("Processing Key: %s\r\n", keyStr);
         this->callMessageHandler(kvp);
     }
+    msg->setProcessedFlag();
 }
 
 bool LFAST::CommsService::callMessageHandler(JsonPair kvp)
@@ -197,6 +241,8 @@ bool LFAST::CommsService::callMessageHandler(JsonPair kvp)
 
 void LFAST::CommsService::sendMessage(CommsMessage &msg, uint8_t sendOpt)
 {
+    // TEST_SERIAL.println("Sending message:");
+    // msg.printMessageInfo();
     if (sendOpt == ACTIVE_CONNECTION)
     {
         WriteBufferingStream bufferedClient(*(activeConnection->client), std::strlen(msg.getBuffPtr()));
@@ -207,6 +253,7 @@ void LFAST::CommsService::sendMessage(CommsMessage &msg, uint8_t sendOpt)
     else
     {
         // TODO
+        TEST_SERIAL.println("Not yet implemented (something went wrong).");
     }
 }
 

@@ -58,6 +58,7 @@ namespace LFAST
         CommsMessage()
         {
             std::memset(this->jsonInputBuffer, 0, sizeof(this->jsonInputBuffer));
+            processed = false;
         }
         virtual ~CommsMessage() {} // TEST_SERIAL.println("Destructor called."); delete[] msgBuff;}
         virtual void placeholder() {}
@@ -66,15 +67,22 @@ namespace LFAST
         // std::string MessageKey;
         StaticJsonDocument<JSON_PROGMEM_SIZE> &getJsonDoc() { return this->JsonDoc; }
         StaticJsonDocument<JSON_PROGMEM_SIZE> &deserialize();
+
         template <typename T>
         inline T getValue(std::string key);
         template <typename T>
-        inline void addKeyValuePair(std::string key, T val){JsonDoc[key] = val;};
+        inline void addKeyValuePair(std::string key, T val);
+        inline void addDestinationKey(std::string key);
+
         const char *getBuffPtr() { return jsonInputBuffer; };
         char jsonInputBuffer[JSON_PROGMEM_SIZE];
+        void setProcessedFlag() { processed = true; }
+        bool hasBeenProcessed() { return processed; }
 
     protected:
         StaticJsonDocument<JSON_PROGMEM_SIZE> JsonDoc;
+        bool processed;
+        std::string destKey;
         // Client *client;
         // char *msgBuff;
     };
@@ -107,8 +115,8 @@ namespace LFAST
     {
         ClientConnection(Client *_client) : client(_client) {}
         Client *client;
-        std::vector<CommsMessage> rxMessageQueue;
-        std::vector<CommsMessage> txMessageQueue;
+        std::vector<CommsMessage*> rxMessageQueue;
+        std::vector<CommsMessage*> txMessageQueue;
     };
     class CommsService
     {
@@ -157,7 +165,6 @@ namespace LFAST
             ALL_CONNECTED = 2,
         };
         virtual void sendMessage(CommsMessage &, uint8_t);
-
         template <class T>
         inline bool registerMessageHandler(std::string key, MessageHandler<T> fn);
         inline bool callMessageHandler(JsonPair kvp);
@@ -170,7 +177,7 @@ namespace LFAST
         // virtual void processReceived();
         void checkForNewClientData();
         virtual void processClientData();
-        virtual void processMessage(CommsMessage &);
+        virtual void processMessage(CommsMessage *);
 
         // void clearRxMessageQueue();
         // void queueTxMessage(CommsMessage &);
@@ -309,4 +316,39 @@ namespace LFAST
     {
         return (std::string(JsonDoc[key.c_str()].as<const char *>()));
     }
+
+    inline void CommsMessage::addDestinationKey(std::string key)
+    {
+
+        // newDoc.createNestedObject(key);
+        // newDoc[key] = JsonDoc.as<JsonObject>();
+        destKey = key;
+
+        if (!JsonDoc.isNull())
+        {
+            StaticJsonDocument<JSON_PROGMEM_SIZE> newDoc;
+
+            for (JsonPairConst kvp : this->JsonDoc.as<JsonObjectConst>())
+            {
+                newDoc[key][kvp.key()] = kvp.value();
+            }
+            this->JsonDoc = newDoc;
+        }
+        else
+        {
+            JsonDoc.createNestedObject(destKey);
+        }
+
+        // = this->getJsonDoc();
+        // JsonObject newObj = JsonDoc.
+    }
+
+    template <typename T>
+    inline void CommsMessage::addKeyValuePair(std::string key, T val)
+    {
+        if (this->destKey.length() > 0)
+            JsonDoc[this->destKey][key] = val;
+        else
+            JsonDoc[key] = val;
+    };
 }

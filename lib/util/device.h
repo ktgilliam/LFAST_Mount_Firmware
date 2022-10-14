@@ -21,7 +21,9 @@
 #define SERIAL_CH(N) CONCAT(Serial, N)
 
 
-
+#define MODE_PIN_LOW 0U
+#define MODE_PIN_HIGH 1U
+#define MODE_PIN_INVALID 2U
 
 #define TEST_SERIAL_NO 2
 #define TEST_SERIAL SERIAL_CH(TEST_SERIAL_NO)
@@ -70,3 +72,8 @@
 
 
 #define TOGGLE_LED_PIN() digitalWrite(LED_PIN, !digitalRead(LED_PIN));
+
+#define  CURSOR_TO_ZEROZERO()   TEST_SERIAL.printf("\033[%u;%uH\033[37m", 0, 0)
+#define  CLEAR_CONSOLE() TEST_SERIAL.printf("\033[2J")
+
+#define  CURSOR_TO_DEBUG_ROW(n)   TEST_SERIAL.printf("\033[%u;%uH\033[37m", 24+n, 0)

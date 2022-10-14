@@ -57,11 +57,11 @@ byte LFAST::EthernetCommsService::mac[6] = {0xDE, 0xAD, 0xBE, 0xEF, 0xFE, 0xED};
 LFAST::EthernetCommsService::EthernetCommsService()
 {
     bool initResult = true;
-    TEST_SERIAL.println("\nInitializing Ethernet... ");
+    TEST_SERIAL.println("Initializing Ethernet... ");
     getTeensyMacAddr(mac);
     // Ethernet.MACAddress(mac);
-    TEST_SERIAL.printf("MAC: %02x:%02x:%02x:%02x:%02x:%02x\r\n",
-                       mac[0], mac[1], mac[2], mac[3], mac[4], mac[5]);
+    // TEST_SERIAL.printf("MAC: %02x:%02x:%02x:%02x:%02x:%02x\r\n",
+    //                    mac[0], mac[1], mac[2], mac[3], mac[4], mac[5]);
     // TEST_SERIAL.println("");
     // initialize the Ethernet device
     Ethernet.begin(mac, ip);
@@ -85,8 +85,9 @@ LFAST::EthernetCommsService::EthernetCommsService()
     {
         // start listening for clients
         this->server.begin(PORT);
-        TEST_SERIAL.print("Start listening... Local IP: ");
-        TEST_SERIAL.println(Ethernet.localIP());
+        TEST_SERIAL.print("Listening for connection on local IP: ");
+        TEST_SERIAL.print(Ethernet.localIP());
+        TEST_SERIAL.print("...");
     }
     this->commsServiceStatus = initResult;
 }
@@ -99,7 +100,7 @@ bool LFAST::EthernetCommsService::checkForNewClients()
     if (newClient)
     {
         newClientFlag = true;
-        TEST_SERIAL.printf("New connection # %d\r\n", connections.size() + 1);
+        TEST_SERIAL.printf("Connection # %d Made.\r\n", connections.size() + 1);
         // Once we "accept", the client is no longer tracked by EthernetServer
         // so we must store it into our list of clients
         enetClients.push_back(newClient);
