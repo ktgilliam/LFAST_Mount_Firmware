@@ -1,10 +1,12 @@
 #include "Telescope.h"
 
-#include <NetComms.h>
+#include <cmath>
 
+#include <NetComms.h>
+#include <mathFuncs.h>
 #include <device.h>
 #include <debug.h>
-#include <cmath>
+
 
 LFAST::MountControl::MountControl()
 {
@@ -13,29 +15,39 @@ LFAST::MountControl::MountControl()
 #endif
 }
 
+void LFAST::MountControl::updateClock(double lst)
+{
+    double dt = lst - localSiderealTime;
+    if(dt > 0.0)
+    {
+        deltaTime = dt;
+        localSiderealTime = lst;
+    }
+}
+
 void LFAST::MountControl::printMountStatus()
 {
     // TEST_SERIAL.printf("\033[32m");
     TEST_SERIAL.printf("\033[%u;%uH", 10, 0);
-    TEST_SERIAL.printf("\033[37mINDI Time:\033[20G%8.4f\r\n", this->indiTime);
+    TEST_SERIAL.printf("\033[37mINDI Time:\033[20G%8.4f\r\n", this->localSiderealTime);
     TEST_SERIAL.printf("\033[0K\033[37mMount Status:\033[22G");
     switch (this->mountStatus)
     {
-    case LFAST::MountControl::MOUNT_IDLE:
-        TEST_SERIAL.println("\033[33mIDLE");
-        break;
-    case LFAST::MountControl::MOUNT_PARKING:
-        TEST_SERIAL.println("\033[31mPARKING");
-        break;
-    case LFAST::MountControl::MOUNT_HOMING:
-        TEST_SERIAL.println("\033[31mHOMING");
-        break;
-    case LFAST::MountControl::MOUNT_SLEWING:
-        TEST_SERIAL.println("\033[32mSLEWING");
-        break;
-    case LFAST::MountControl::MOUNT_PARKED:
-        TEST_SERIAL.println("\033[37mPARKED");
-        break;
+        case LFAST::MountControl::MOUNT_IDLE:
+            TEST_SERIAL.println("\033[33mIDLE");
+            break;
+        case LFAST::MountControl::MOUNT_PARKING:
+            TEST_SERIAL.println("\033[31mPARKING");
+            break;
+        case LFAST::MountControl::MOUNT_HOMING:
+            TEST_SERIAL.println("\033[31mHOMING");
+            break;
+        case LFAST::MountControl::MOUNT_SLEWING:
+            TEST_SERIAL.println("\033[32mSLEWING");
+            break;
+        case LFAST::MountControl::MOUNT_PARKED:
+            TEST_SERIAL.println("\033[37mPARKED");
+            break;
     }
     TEST_SERIAL.println();
 
@@ -81,36 +93,67 @@ void LFAST::MountControl::unpark()
 #endif
 }
 
-void LFAST::MountControl::gotoAlt(double tgtAltPosn)
+void LFAST::MountControl::gotoAltAz(double altDeg, double azDeg)
 {
     if (mountStatus != MOUNT_PARKED)
     {
-        targetAltPosn = tgtAltPosn;
-        mountStatus = MOUNT_SLEWING;
-        CURSOR_TO_DEBUG_ROW(0);
-        TEST_SERIAL.printf("Updating target Alt %4.6f...", tgtAltPosn);
+        double altTmp = saturate(altDeg, MIN_ALT_ANGLE_DEG, MAX_ALT_ANGLE_DEG);
+        if (altTmp != altDeg)
+        {
+            CURSOR_TO_DEBUG_ROW(3);
+            TEST_SERIAL.printf("Out of bounds error");
+        }
+        else
+        {
+            targetAltPosn = altDeg;
+        }
+        targetAzPosn = azDeg;
+        if(currentAltPosn == targetAltPosn && currentAzPosn == targetAzPosn)
+            mountStatus = MOUNT_IDLE;
+        else
+            mountStatus = MOUNT_SLEWING;
     }
 
 #if SIM_SCOPE_ENABLED
 #else
-#warning GOTO (ALT) NOT IMPLEMENTED
+#warning GOTO ALT/AZ NOT IMPLEMENTED
 #endif
 }
 
-void LFAST::MountControl::gotoAz(double tgtAzPosn)
+void LFAST::MountControl::raDecToAltAz(double ra, double dec, double *alt, double *az)
 {
-    if (mountStatus != MOUNT_PARKED)
+    double ha = (localSiderealTime - ra);
+    if (ha < 0)
     {
-        targetAzPosn = tgtAzPosn;
-        mountStatus = MOUNT_SLEWING;
-        CURSOR_TO_DEBUG_ROW(1);
-        TEST_SERIAL.printf("Updating target Az %4.6f...", tgtAzPosn);
+        ha += 2 * M_PI;
     }
+    if (ha > M_PI)
+    {
+        ha = ha - 2 * M_PI;
+    }
+    double AzTmp = atan2(sin(ha),
+                         cos(ha) * sin(localLatitude) - tan(dec) * cos(localLatitude)) -
+                   M_PI;
+    AzTmp = AzTmp >= 0 ? AzTmp : (AzTmp + 2 * M_PI);
 
-#if SIM_SCOPE_ENABLED
-#else
-#warning GOTO (ALT) NOT IMPLEMENTED
-#endif
+    double AltTmp = asin(sin(localLatitude) * sin(dec) + cos(localLatitude) * cos(dec) * cos(ha));
+
+    *alt = AltTmp;
+    *az = AzTmp;
+}
+
+void LFAST::MountControl::gotoRaDec(double ra, double dec)
+{
+    double tgtAlt, tgtAz;
+    this->raDecToAltAz(ra, dec, &tgtAlt, &tgtAz);
+    this->gotoAltAz(tgtAlt, tgtAz);
+}
+
+void LFAST::MountControl::syncRaDec(double ra, double dec)
+{
+    double newAlt, newAz;
+    this->raDecToAltAz(ra, dec, &newAlt, &newAz);
+    this->gotoAltAz(newAlt, newAz);
 }
 
 double LFAST::MountControl::getTrackRate()
@@ -134,10 +177,8 @@ void LFAST::MountControl::abortSlew()
 #endif
 }
 
-void LFAST::MountControl::updateSimMount(double time)
+void LFAST::MountControl::updateSimMount()
 {
-    indiTime = time;
-
     CURSOR_TO_DEBUG_ROW(0);
     // TEST_SERIAL.println("Updating sim...");
 
@@ -146,56 +187,78 @@ void LFAST::MountControl::updateSimMount(double time)
 
     switch (mountStatus)
     {
-    case LFAST::MountControl::MOUNT_PARKED:
+        case LFAST::MountControl::MOUNT_PARKED:
         // Intentional fall-through
-    case LFAST::MountControl::MOUNT_IDLE:
-        altRate_dps = 0.0;
-        azRate_dps = 0.0;
-        break;
-    case LFAST::MountControl::MOUNT_PARKING:
-        // Intentional fall-through
-    case LFAST::MountControl::MOUNT_HOMING:
-        // Intentional fall-through
-    case LFAST::MountControl::MOUNT_SLEWING:
-        if (std::abs(AltPosnErr) < DEFAULT_ALT_RATE)
-        {
-            AltPosnErr = 0.0;
+        case LFAST::MountControl::MOUNT_IDLE:
             altRate_dps = 0.0;
-            currentAltPosn = targetAltPosn;
-        }
-
-        if (AzPosnErr > M_PI)
-        {
-            AzPosnErr -= (2*M_PI);
-        }
-        
-        if (std::abs(AzPosnErr) < DEFAULT_AZ_RATE)
-        {
-            AzPosnErr = 0.0;
             azRate_dps = 0.0;
-            currentAzPosn = targetAzPosn;
-        }
-        if (AltPosnErr == 0.0 && AzPosnErr == 0.0)
-        {
-            mountStatus = MOUNT_IDLE;
-        }
-        else
-        {
-            altRate_dps = (AltPosnErr > 0) ? DEFAULT_ALT_RATE : -1 * DEFAULT_ALT_RATE;
-            azRate_dps = (AzPosnErr > 0) ? DEFAULT_AZ_RATE : -1 * DEFAULT_AZ_RATE;
+            break;
+        case LFAST::MountControl::MOUNT_PARKING:
+        // Intentional fall-through
+        case LFAST::MountControl::MOUNT_HOMING:
+        // Intentional fall-through
+        case LFAST::MountControl::MOUNT_SLEWING:
+            if (std::abs(AltPosnErr) < DEFAULT_ALT_RATE)
+            {
+                AltPosnErr = 0.0;
+                altRate_dps = 0.0;
+                currentAltPosn = targetAltPosn;
+            }
 
-            currentAltPosn += altRate_dps;
-            if (currentAltPosn > (2 * M_PI))
-                currentAltPosn -= (2 * M_PI);
-            else if (currentAltPosn < 0)
-                currentAltPosn += (2 * M_PI);
+            if (AzPosnErr > M_PI)
+            {
+                AzPosnErr -= (2 * M_PI);
+            }
 
-            currentAzPosn += azRate_dps;
-            if (currentAzPosn > (2 * M_PI))
-                currentAzPosn -= (2 * M_PI);
-            else if (currentAzPosn < 0)
-                currentAzPosn += (2 * M_PI);
-        }
-        break;
+            if (std::abs(AzPosnErr) < DEFAULT_AZ_RATE)
+            {
+                AzPosnErr = 0.0;
+                azRate_dps = 0.0;
+                currentAzPosn = targetAzPosn;
+            }
+            if (AltPosnErr == 0.0 && AzPosnErr == 0.0)
+            {
+                mountStatus = MOUNT_IDLE;
+            }
+            else
+            {
+                altRate_dps = (AltPosnErr > 0) ? DEFAULT_ALT_RATE : -1 * DEFAULT_ALT_RATE;
+                azRate_dps = (AzPosnErr > 0) ? DEFAULT_AZ_RATE : -1 * DEFAULT_AZ_RATE;
+
+                currentAltPosn += altRate_dps;
+                if (currentAltPosn > (2 * M_PI))
+                    currentAltPosn -= (2 * M_PI);
+                else if (currentAltPosn < 0)
+                    currentAltPosn += (2 * M_PI);
+
+                currentAzPosn += azRate_dps;
+                if (currentAzPosn > (2 * M_PI))
+                    currentAzPosn -= (2 * M_PI);
+                else if (currentAzPosn < 0)
+                    currentAzPosn += (2 * M_PI);
+            }
+            break;
     }
+}
+
+void LFAST::MountControl::getCurrentRaDec(double *ra, double *dec)
+{
+    double haTmp;
+    altAzToHADec(currentAltPosn, currentAzPosn, &haTmp, dec);
+
+    if (ra)
+        *ra = localSiderealTime - haTmp;
+}
+
+
+void LFAST::MountControl::altAzToHADec(double alt, double az, double *ha, double *dec)
+{
+    double haTmp = atan2(-sin(az), tan(alt) * cos(localLatitude) - cos(az) * sin(localLatitude));
+    if (ha)
+        *ha = haTmp >= 0 ? haTmp : haTmp + 2 * M_PI;
+
+    double decTmp = asin(sin(localLatitude) * sin(alt) + cos(localLatitude) * cos(alt) * cos(az));
+    if (dec)
+        *dec = decTmp;
+    return;
 }

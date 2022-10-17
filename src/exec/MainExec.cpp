@@ -19,25 +19,33 @@
 
 #include "Telescope.h"
 
-void ackGotoCommand(uint8_t axis);
-void ackSyncCommand(uint8_t axis);
+void updateAltAzGotoCommand(uint8_t axis, double val);
+void updateRaDecGotoCommand(uint8_t axis, double val);
+void ackSyncCommand(uint8_t axis, double val);
 
 // Message Handlers:
 void handshake(unsigned int val);
-void updateTime(double indiTimeStamp);
-void sendAltAzPositions(double indiTimeStamp);
-void sendParkedStatus(double indiTimeStamp);
-void sendTrackRate(double indiTimeStamp);
-void parkScope(double indiTimeStamp);
-void unparkScope(double indiTimeStamp);
+void updateTime(double lst);
+void updateLatitude(double lat);
+void updateLongitude(double lon);
+void sendRaDec(double lst);
+void sendParkedStatus(double lst);
+void sendTrackRate(double lst);
+void parkScope(double lst);
+void unparkScope(double lst);
 void noDisconnect(bool noDiscoFlag);
-void abortSlew(double indiTimeStamp);
-void sendSlewCompleteStatus(double indiTimeStamp);
-void updateTargetAzPosition(double tgtAzPosn);
-void updateTargetAltPosition(double tgtAltPosn);
+void abortSlew(double lst);
+void sendSlewCompleteStatus(double lst);
+
+void slewToRa(double ra);
+void slewToDec(double dec);
+
+void slewToAz(double tgtAzPosn);
+void slewToAlt(double tgtAltPosn);
+
 void syncAzPosition(double currentAzPosn);
 void syncAltPosition(double currentElPosn);
-void findHome(double indiTimeStamp);
+void findHome(double lst);
 
 LFAST::EthernetCommsService *commsService;
 LFAST::MountControl *mountControl;
@@ -48,14 +56,14 @@ LFAST::MountControl *mountControl;
  */
 void deviceSetup()
 {
-  pinMode(LED_PIN, OUTPUT);
-  pinMode(MODE_PIN, INPUT);
-  pinMode(DEBUG_PIN_1, OUTPUT);
-  pinMode(TEST_SERIAL_TX_PIN, OUTPUT);
+    pinMode(LED_PIN, OUTPUT);
+    pinMode(MODE_PIN, INPUT);
+    pinMode(DEBUG_PIN_1, OUTPUT);
+    pinMode(TEST_SERIAL_TX_PIN, OUTPUT);
 
-  digitalWrite(DEBUG_PIN_1, LOW);
+    digitalWrite(DEBUG_PIN_1, LOW);
 
-  TEST_SERIAL.begin(TEST_SERIAL_BAUD);
+    TEST_SERIAL.begin(TEST_SERIAL_BAUD);
 }
 
 /**
@@ -64,246 +72,330 @@ void deviceSetup()
  */
 void setup(void)
 {
-  deviceSetup();
-  CLEAR_CONSOLE();
-  CURSOR_TO_ZEROZERO();
-  TEST_SERIAL.printf("################################################################################################\r\n");
-  TEST_SERIAL.printf("###################################### LFAST MOUNT CONTROL #####################################\r\n");
-  TEST_SERIAL.printf("################################################################################################\r\n");
-  commsService = new LFAST::EthernetCommsService();
-  mountControl = new LFAST::MountControl();
+    deviceSetup();
+    CLEAR_CONSOLE();
+    CURSOR_TO_ZEROZERO();
+    TEST_SERIAL.printf("################################################################################################\r\n");
+    TEST_SERIAL.printf("###################################### LFAST MOUNT CONTROL #####################################\r\n");
+    TEST_SERIAL.printf("################################################################################################\r\n");
+    commsService = new LFAST::EthernetCommsService();
+    mountControl = new LFAST::MountControl();
 
-  if (!commsService->Status())
-  {
-    TEST_SERIAL.println("Device Setup Failed.");
-    while (true)
+    if (!commsService->Status())
     {
-      ;
-      ;
+        TEST_SERIAL.println("Device Setup Failed.");
+        while (true)
+        {
+            ;
+            ;
+        }
     }
-  }
 
-  commsService->registerMessageHandler<unsigned int>("Handshake", handshake);
-  commsService->registerMessageHandler<double>("time", updateTime);
-  commsService->registerMessageHandler<double>("RequestAltAz", sendAltAzPositions);
-  commsService->registerMessageHandler<double>("IsParked", sendParkedStatus);
-  commsService->registerMessageHandler<double>("getTrackRate", sendTrackRate);
-  commsService->registerMessageHandler<double>("Park", parkScope);
-  commsService->registerMessageHandler<double>("Unpark", unparkScope);
-  commsService->registerMessageHandler<double>("AbortSlew", abortSlew);
-  commsService->registerMessageHandler<bool>("NoDisconnect", noDisconnect);
-  commsService->registerMessageHandler<double>("IsSlewComplete", sendSlewCompleteStatus);
-  commsService->registerMessageHandler<double>("slewToAzPosn", updateTargetAzPosition);
-  commsService->registerMessageHandler<double>("slewToAltPosn", updateTargetAltPosition);
-  commsService->registerMessageHandler<double>("syncAzPosn", syncAzPosition);
-  commsService->registerMessageHandler<double>("syncAltPosn", syncAltPosition);
-  commsService->registerMessageHandler<double>("FindHome", findHome);
+    commsService->registerMessageHandler<unsigned int>("Handshake", handshake);
+    commsService->registerMessageHandler<double>("time", updateTime);
+    commsService->registerMessageHandler<double>("latitude", updateLatitude);
+    commsService->registerMessageHandler<double>("longitude", updateLongitude);
+    commsService->registerMessageHandler<double>("RequestRaDec", sendRaDec);
+    commsService->registerMessageHandler<double>("IsParked", sendParkedStatus);
+    commsService->registerMessageHandler<double>("getTrackRate", sendTrackRate);
+    commsService->registerMessageHandler<double>("Park", parkScope);
+    commsService->registerMessageHandler<double>("Unpark", unparkScope);
+    commsService->registerMessageHandler<double>("AbortSlew", abortSlew);
+    commsService->registerMessageHandler<double>("IsSlewComplete", sendSlewCompleteStatus);
+    commsService->registerMessageHandler<bool>("NoDisconnect", noDisconnect);
 
-  delay(500);
+    commsService->registerMessageHandler<double>("slewToAzPosn", slewToAz);
+    commsService->registerMessageHandler<double>("slewToAltPosn", slewToAlt);
 
-  initHeartbeat();
-  resetHeartbeat();
-  uint8_t modePinState = digitalRead(MODE_PIN);
-  if (modePinState == HIGH)
-  {
-    setHeartBeatPeriod(100000);
-    // TEST_SERIAL.println("CAN Test Mode: Talker. ");
-  }
-  else
-  {
-    setHeartBeatPeriod(400000);
-    // TEST_SERIAL.println("CAN Test Mode: Listener. ");
-  }
+    commsService->registerMessageHandler<double>("slewToRaPosn", slewToRa);
+    commsService->registerMessageHandler<double>("slewToDecPosn", slewToDec);
+
+    commsService->registerMessageHandler<double>("syncAzPosn", syncAzPosition);
+    commsService->registerMessageHandler<double>("syncAltPosn", syncAltPosition);
+    commsService->registerMessageHandler<double>("FindHome", findHome);
+
+    delay(500);
+
+    initHeartbeat();
+    resetHeartbeat();
+    uint8_t modePinState = digitalRead(MODE_PIN);
+    if (modePinState == HIGH)
+    {
+        setHeartBeatPeriod(100000);
+        // TEST_SERIAL.println("CAN Test Mode: Talker. ");
+    }
+    else
+    {
+        setHeartBeatPeriod(400000);
+        // TEST_SERIAL.println("CAN Test Mode: Listener. ");
+    }
 }
 
 void loop(void)
 {
-  commsService->checkForNewClients();
-  commsService->checkForNewClientData();
-  commsService->processClientData();
-  commsService->stopDisconnectedClients();
+    commsService->checkForNewClients();
+    commsService->checkForNewClientData();
+    commsService->processClientData();
+    commsService->stopDisconnectedClients();
 }
 
 void handshake(unsigned int val)
 {
-  LFAST::CommsMessage newMsg;
-  if (val == 0xDEAD)
-  {
-    newMsg.addKeyValuePair<unsigned int>("Handshake", 0xBEEF);
+    LFAST::CommsMessage newMsg;
+    if (val == 0xDEAD)
+    {
+        newMsg.addKeyValuePair<unsigned int>("Handshake", 0xBEEF);
+        commsService->sendMessage(newMsg, LFAST::CommsService::ACTIVE_CONNECTION);
+    }
+    else
+    {
+        // TODO: Generate error
+    }
+    return;
+}
+
+void setNoReply(bool flag)
+{
+    commsService->setNoReplyFlag(flag);
+}
+
+void updateTime(double lst)
+{
+    mountControl->updateClock(lst);
+#if SIM_SCOPE_ENABLED
+    mountControl->updateSimMount();
+#endif
+}
+
+void updateLatitude(double lat)
+{
+#if SIM_SCOPE_ENABLED
+#endif
+    mountControl->setLatitude(lat);
+}
+
+void updateLongitude(double lon)
+{
+#if SIM_SCOPE_ENABLED
+#endif
+    mountControl->setLongitude(lon);
+}
+
+void sendRaDec(double lst)
+{
+    LFAST::CommsMessage newMsg;
+#if SIM_SCOPE_ENABLED
+    mountControl->updateSimMount();
+#endif
+
+    double ra = 0.0, dec = 0.0;
+    mountControl->getCurrentRaDec(&ra, &dec);
+    newMsg.addKeyValuePair<double>("RA", ra);
+    newMsg.addKeyValuePair<double>("DEC", dec);
     commsService->sendMessage(newMsg, LFAST::CommsService::ACTIVE_CONNECTION);
-  }
-  else
-  {
-    // TODO: Generate error
-  }
-  return;
+    mountControl->printMountStatus();
 }
 
-void updateTime(double indiTimeStamp)
+void sendParkedStatus(double lst)
 {
 #if SIM_SCOPE_ENABLED
-  mountControl->updateSimMount(indiTimeStamp);
+    mountControl->updateSimMount();
 #endif
+    LFAST::CommsMessage newMsg;
+    newMsg.addKeyValuePair<bool>("IsParked", mountControl->mountIsParked());
+    commsService->sendMessage(newMsg, LFAST::CommsService::ACTIVE_CONNECTION);
 }
 
-void sendAltAzPositions(double indiTimeStamp)
+void sendTrackRate(double lst)
 {
-  LFAST::CommsMessage newMsg;
 #if SIM_SCOPE_ENABLED
-  mountControl->updateSimMount(indiTimeStamp);
+    mountControl->updateSimMount();
 #endif
-
-  newMsg.addKeyValuePair<double>("AzPosition", mountControl->getCurrentAz());
-  newMsg.addKeyValuePair<double>("AltPosition", mountControl->getCurrentAlt());
-  commsService->sendMessage(newMsg, LFAST::CommsService::ACTIVE_CONNECTION);
-  mountControl->printMountStatus();
+    LFAST::CommsMessage newMsg;
+    newMsg.addKeyValuePair<double>("TrackRate", mountControl->getTrackRate());
+    commsService->sendMessage(newMsg, LFAST::CommsService::ACTIVE_CONNECTION);
 }
 
-void sendParkedStatus(double indiTimeStamp)
+void parkScope(double lst)
 {
+    mountControl->park();
+
 #if SIM_SCOPE_ENABLED
-  mountControl->updateSimMount(indiTimeStamp);
+    mountControl->updateSimMount();
 #endif
-  LFAST::CommsMessage newMsg;
-  newMsg.addKeyValuePair<bool>("IsParked", mountControl->mountIsParked());
-  commsService->sendMessage(newMsg, LFAST::CommsService::ACTIVE_CONNECTION);
+
+    LFAST::CommsMessage newMsg;
+    newMsg.addKeyValuePair<std::string>("Park", "$OK^");
+    commsService->sendMessage(newMsg, LFAST::CommsService::ACTIVE_CONNECTION);
 }
 
-void sendTrackRate(double indiTimeStamp)
+void unparkScope(double lst)
 {
-#if SIM_SCOPE_ENABLED
-  mountControl->updateSimMount(indiTimeStamp);
-#endif
-  LFAST::CommsMessage newMsg;
-  newMsg.addKeyValuePair<double>("TrackRate", mountControl->getTrackRate());
-  commsService->sendMessage(newMsg, LFAST::CommsService::ACTIVE_CONNECTION);
-}
-
-void parkScope(double indiTimeStamp)
-{
-  mountControl->park();
+    mountControl->unpark();
 
 #if SIM_SCOPE_ENABLED
-  mountControl->updateSimMount(indiTimeStamp);
+    mountControl->updateSimMount();
 #endif
 
-  LFAST::CommsMessage newMsg;
-  newMsg.addKeyValuePair<std::string>("Park", "$OK^");
-  commsService->sendMessage(newMsg, LFAST::CommsService::ACTIVE_CONNECTION);
-}
-
-void unparkScope(double indiTimeStamp)
-{
-  mountControl->unpark();
-
-#if SIM_SCOPE_ENABLED
-  mountControl->updateSimMount(indiTimeStamp);
-#endif
-
-  LFAST::CommsMessage newMsg;
-  newMsg.addKeyValuePair<std::string>("Unpark", "$OK^");
-  commsService->sendMessage(newMsg, LFAST::CommsService::ACTIVE_CONNECTION);
+    LFAST::CommsMessage newMsg;
+    newMsg.addKeyValuePair<std::string>("Unpark", "$OK^");
+    commsService->sendMessage(newMsg, LFAST::CommsService::ACTIVE_CONNECTION);
 }
 
 void noDisconnect(bool noDiscoFlag)
 {
-  LFAST::CommsMessage newMsg;
-  newMsg.addKeyValuePair<std::string>("NoDisconnect", "$OK^");
-  commsService->sendMessage(newMsg, LFAST::CommsService::ACTIVE_CONNECTION);
+    LFAST::CommsMessage newMsg;
+    newMsg.addKeyValuePair<std::string>("NoDisconnect", "$OK^");
+    commsService->sendMessage(newMsg, LFAST::CommsService::ACTIVE_CONNECTION);
 }
 
-void abortSlew(double indiTimeStamp)
+void abortSlew(double lst)
 {
-  mountControl->abortSlew();
-  LFAST::CommsMessage newMsg;
-  newMsg.addKeyValuePair<std::string>("AbortSlew", "$OK^");
-  commsService->sendMessage(newMsg, LFAST::CommsService::ACTIVE_CONNECTION);
+    mountControl->abortSlew();
+    LFAST::CommsMessage newMsg;
+    newMsg.addKeyValuePair<std::string>("AbortSlew", "$OK^");
+    commsService->sendMessage(newMsg, LFAST::CommsService::ACTIVE_CONNECTION);
 }
 
-void sendSlewCompleteStatus(double indiTimeStamp)
+void sendSlewCompleteStatus(double lst)
 {
 #if SIM_SCOPE_ENABLED
-  mountControl->updateSimMount(indiTimeStamp);
+    mountControl->updateSimMount();
 #endif
-  LFAST::CommsMessage newMsg;
-  newMsg.addKeyValuePair<bool>("SlewIsComplete", mountControl->mountIsIdle());
-  commsService->sendMessage(newMsg, LFAST::CommsService::ACTIVE_CONNECTION);
+    LFAST::CommsMessage newMsg;
+    newMsg.addKeyValuePair<bool>("SlewIsComplete", mountControl->mountIsIdle());
+    commsService->sendMessage(newMsg, LFAST::CommsService::ACTIVE_CONNECTION);
 }
 
-void updateTargetAltPosition(double tgtAltPosn)
+void slewToAlt(double targetAlt)
 {
-  mountControl->gotoAlt(tgtAltPosn);
-  ackGotoCommand(LFAST::MountControl::EL_AXIS);
+    updateAltAzGotoCommand(LFAST::MountControl::ALT_AXIS, targetAlt);
 }
 
-void updateTargetAzPosition(double tgtAzPosn)
+void slewToAz(double targetAz)
 {
-  mountControl->gotoAz(tgtAzPosn);
-  ackGotoCommand(LFAST::MountControl::AZ_AXIS);
+    updateAltAzGotoCommand(LFAST::MountControl::AZ_AXIS, targetAz);
+}
+
+void slewToRa(double targetRa)
+{
+    updateRaDecGotoCommand(LFAST::MountControl::RA_AXIS, targetRa);
+}
+void slewToDec(double targetDec)
+{
+    updateRaDecGotoCommand(LFAST::MountControl::DEC_AXIS, targetDec);
 }
 
 void syncAzPosition(double currentAzPosn)
 {
-  mountControl->syncAz(currentAzPosn);
-  ackSyncCommand(LFAST::MountControl::AZ_AXIS);
+    ackSyncCommand(LFAST::MountControl::AZ_AXIS, currentAzPosn);
 }
 
 void syncAltPosition(double currentAltPosn)
 {
-  mountControl->syncAlt(currentAltPosn);
-  ackSyncCommand(LFAST::MountControl::EL_AXIS);
+    ackSyncCommand(LFAST::MountControl::ALT_AXIS, currentAltPosn);
 }
 
-void findHome(double indiTimeStamp)
+void findHome(double lst)
 {
-  mountControl->findHome();
+    mountControl->findHome();
 #if SIM_SCOPE_ENABLED
-  mountControl->updateSimMount(indiTimeStamp);
+    mountControl->updateSimMount();
 #endif
 
-  LFAST::CommsMessage newMsg;
-  newMsg.addKeyValuePair<std::string>("FindHome", "$OK^");
-  commsService->sendMessage(newMsg, LFAST::CommsService::ACTIVE_CONNECTION);
+    LFAST::CommsMessage newMsg;
+    newMsg.addKeyValuePair<std::string>("FindHome", "$OK^");
+    commsService->sendMessage(newMsg, LFAST::CommsService::ACTIVE_CONNECTION);
 }
 
-void ackGotoCommand(uint8_t axis)
+void updateAltAzGotoCommand(uint8_t axis, double val)
 {
-  static bool azUpdated = false;
-  static bool elUpdated = false;
+    static bool azUpdated = false;
+    static bool altUpdated = false;
+    static double azVal = 0.0;
+    static double altVal = 0.0;
 
-  if (axis == LFAST::MountControl::AZ_AXIS)
-    azUpdated = true;
-  else if (axis == LFAST::MountControl::EL_AXIS)
-    elUpdated = true;
+    if(axis == LFAST::MountControl::AZ_AXIS)
+    {
+        azUpdated = true;
+        azVal = val;
+    }
+    else if(axis == LFAST::MountControl::ALT_AXIS)
+    {
+        altUpdated = true;
+        altVal = val;
+    }
 
-  if (azUpdated && elUpdated)
-  {
-    LFAST::CommsMessage newMsg;
-    newMsg.addKeyValuePair<std::string>("slewToAltPosn", "$OK^");
-    newMsg.addKeyValuePair<std::string>("slewToAzPosn", "$OK^");
-    commsService->sendMessage(newMsg, LFAST::CommsService::ACTIVE_CONNECTION);
-    azUpdated = false;
-    elUpdated = false;
-  }
+    if (azUpdated && altUpdated)
+    {
+        LFAST::CommsMessage newMsg;
+        newMsg.addKeyValuePair<std::string>("slewToAltPosn", "$OK^");
+        newMsg.addKeyValuePair<std::string>("slewToAzPosn", "$OK^");
+        commsService->sendMessage(newMsg, LFAST::CommsService::ACTIVE_CONNECTION);
+        azUpdated = false;
+        altUpdated = false;
+        mountControl->gotoAltAz(altVal, azVal);
+    }
 }
 
-void ackSyncCommand(uint8_t axis)
+
+void updateRaDecGotoCommand(uint8_t axis, double val)
 {
-  static bool azUpdated = false;
-  static bool elUpdated = false;
+    static bool raUpdated = false;
+    static bool decUpdated = false;
+    static double raVal = 0.0;
+    static double decVal = 0.0;
 
-  if (axis == LFAST::MountControl::AZ_AXIS)
-    azUpdated = true;
-  else if (axis == LFAST::MountControl::EL_AXIS)
-    elUpdated = true;
+    if(axis == LFAST::MountControl::RA_AXIS)
+    {
+        raVal = val;
+        raUpdated = true;
+    }
+    else if(axis == LFAST::MountControl::DEC_AXIS)
+    {
+        decVal = val;
+        decUpdated = true;
+    }
 
-  if (azUpdated && elUpdated)
-  {
-    LFAST::CommsMessage newMsg;
-    newMsg.addKeyValuePair<std::string>("syncAltPosn", "$OK^");
-    newMsg.addKeyValuePair<std::string>("syncAzPosn", "$OK^");
-    commsService->sendMessage(newMsg, LFAST::CommsService::ACTIVE_CONNECTION);
-    azUpdated = false;
-    elUpdated = false;
-  }
+    if (raUpdated && decUpdated)
+    {
+        LFAST::CommsMessage newMsg;
+        newMsg.addKeyValuePair<std::string>("slewToRa", "$OK^");
+        newMsg.addKeyValuePair<std::string>("slewToDec", "$OK^");
+        commsService->sendMessage(newMsg, LFAST::CommsService::ACTIVE_CONNECTION);
+        raUpdated = false;
+        decUpdated = false;
+        mountControl->gotoRaDec(raVal, decVal);
+    }
+}
+
+
+void ackSyncCommand(uint8_t axis, double val)
+{
+    static bool raUpdated = false;
+    static bool decUpdated = false;
+    static double raVal = 0.0;
+    static double decVal = 0.0;
+
+    if(axis == LFAST::MountControl::RA_AXIS)
+    {
+        raVal = val;
+        raUpdated = true;
+    }
+    else if(axis == LFAST::MountControl::DEC_AXIS)
+    {
+        decVal = val;
+        decUpdated = true;
+    }
+
+    if (raUpdated && decUpdated)
+    {
+        LFAST::CommsMessage newMsg;
+        newMsg.addKeyValuePair<std::string>("syncRaPosn", "$OK^");
+        newMsg.addKeyValuePair<std::string>("syncDecPosn", "$OK^");
+        commsService->sendMessage(newMsg, LFAST::CommsService::ACTIVE_CONNECTION);
+        raUpdated = false;
+        decUpdated = false;
+        mountControl->syncRaDec(raVal, decVal);
+    }
 }

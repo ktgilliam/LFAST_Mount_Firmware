@@ -21,11 +21,6 @@ std::vector<LFAST::ClientConnection> LFAST::CommsService::connections{};
 LFAST::CommsService::CommsService()
 {
     activeConnection = nullptr;
-    // for (uint16_t ii = 0; ii < MAX_CTRL_MESSAGES; ii++)
-    // {
-    //     this->registerMessageHandler(ii, CommsService::defaultMessageHandler);
-    // }
-    // this->messageHandlerList["Default"] = CommsService::defaultMessageHandler;
 }
 
 void LFAST::CommsService::setupClientMessageBuffers(Client *client)
@@ -111,7 +106,6 @@ bool LFAST::CommsService::getNewMessages(ClientConnection &connection)
                     // TEST_SERIAL.printf(" [%u bytes]\r\n", bytesRead);
 
                     connection.rxMessageQueue.push_back(newMsg);
-
                     // TEST_SERIAL.println("Received Message:");
                     // newMsg->printMessageInfo();
                     break;
