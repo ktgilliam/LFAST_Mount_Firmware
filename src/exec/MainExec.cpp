@@ -19,7 +19,7 @@
 
 #include "Telescope.h"
 
-void updateAltAzGotoCommand(uint8_t axis, double val);
+// void updateAltAzGotoCommand(uint8_t axis, double val);
 void updateRaDecGotoCommand(uint8_t axis, double val);
 void updateSyncCommand(uint8_t axis, double val);
 
@@ -39,10 +39,6 @@ void sendSlewCompleteStatus(double lst);
 
 void slewToRa(double ra);
 void slewToDec(double dec);
-
-void slewToAz(double tgtAzPosn);
-void slewToAlt(double tgtAltPosn);
-
 void syncRaPosition(double currentRaPosn);
 void syncDecPosition(double currentDecPosn);
 void findHome(double lst);
@@ -103,9 +99,6 @@ void setup(void)
     commsService->registerMessageHandler<double>("AbortSlew", abortSlew);
     commsService->registerMessageHandler<double>("IsSlewComplete", sendSlewCompleteStatus);
     commsService->registerMessageHandler<bool>("NoDisconnect", noDisconnect);
-
-    commsService->registerMessageHandler<double>("slewToAzPosn", slewToAz);
-    commsService->registerMessageHandler<double>("slewToAltPosn", slewToAlt);
 
     commsService->registerMessageHandler<double>("slewToRa", slewToRa);
     commsService->registerMessageHandler<double>("slewToDec", slewToDec);
@@ -207,7 +200,7 @@ void sendParkedStatus(double lst)
 {
 #if SIM_SCOPE_ENABLED
     mountControl->updateClock(lst);
-    mountControl->updateSimMount();
+    // mountControl->updateSimMount();
 #endif
     LFAST::CommsMessage newMsg;
     newMsg.addKeyValuePair<bool>("IsParked", mountControl->mountIsParked());
@@ -279,15 +272,15 @@ void sendSlewCompleteStatus(double lst)
     commsService->sendMessage(newMsg, LFAST::CommsService::ACTIVE_CONNECTION);
 }
 
-void slewToAlt(double targetAlt)
-{
-    updateAltAzGotoCommand(LFAST::MountControl::ALT_AXIS, targetAlt);
-}
+// void slewToAlt(double targetAlt)
+// {
+//     updateAltAzGotoCommand(LFAST::MountControl::ALT_AXIS, targetAlt);
+// }
 
-void slewToAz(double targetAz)
-{
-    updateAltAzGotoCommand(LFAST::MountControl::AZ_AXIS, targetAz);
-}
+// void slewToAz(double targetAz)
+// {
+//     updateAltAzGotoCommand(LFAST::MountControl::AZ_AXIS, targetAz);
+// }
 
 void slewToRa(double targetRa)
 {
@@ -320,35 +313,6 @@ void findHome(double lst)
     commsService->sendMessage(newMsg, LFAST::CommsService::ACTIVE_CONNECTION);
 }
 
-void updateAltAzGotoCommand(uint8_t axis, double val)
-{
-    static bool azUpdated = false;
-    static bool altUpdated = false;
-    static double azVal = 0.0;
-    static double altVal = 0.0;
-
-    if (axis == LFAST::MountControl::AZ_AXIS)
-    {
-        azUpdated = true;
-        azVal = val;
-    }
-    else if (axis == LFAST::MountControl::ALT_AXIS)
-    {
-        altUpdated = true;
-        altVal = val;
-    }
-
-    if (azUpdated && altUpdated)
-    {
-        LFAST::CommsMessage newMsg;
-        newMsg.addKeyValuePair<std::string>("slewToAltPosn", "$OK^");
-        newMsg.addKeyValuePair<std::string>("slewToAzPosn", "$OK^");
-        commsService->sendMessage(newMsg, LFAST::CommsService::ACTIVE_CONNECTION);
-        azUpdated = false;
-        altUpdated = false;
-        mountControl->gotoAltAz(altVal, azVal);
-    }
-}
 
 void updateRaDecGotoCommand(uint8_t axis, double val)
 {
@@ -378,7 +342,7 @@ void updateRaDecGotoCommand(uint8_t axis, double val)
         commsService->sendMessage(newMsg, LFAST::CommsService::ACTIVE_CONNECTION);
         raUpdated = false;
         decUpdated = false;
-        mountControl->gotoRaDec(raVal, decVal);
+        mountControl->updateTargetRaDec(raVal, decVal);
     }
 }
 

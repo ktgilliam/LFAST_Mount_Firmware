@@ -3,11 +3,12 @@
 #include <NetComms.h>
 
 #define SIM_SCOPE_ENABLED 1
+#define SLEW_MULT 512
 
 #if SIM_SCOPE_ENABLED
-#define SIDEREAL_RATE_DPS (15.041067 / 3600.0)
-#define AZ_SLEW_RATE (SIDEREAL_RATE_DPS*32)
-#define ALT_SLEW_RATE (SIDEREAL_RATE_DPS*32)
+#define SIDEREAL_RATE_RPS (0.000072921)//(15.041067 / 3600.0 * M_PI / 180.0)
+#define AZ_SLEW_RATE (SIDEREAL_RATE_RPS*SLEW_MULT)
+#define ALT_SLEW_RATE (SIDEREAL_RATE_RPS*SLEW_MULT)
 
 #define SCOPE_PARK_TIME_COUNT 100
 #endif
@@ -15,7 +16,9 @@
 #define MIN_ALT_ANGLE_RAD 0.0
 #define MAX_ALT_ANGLE_RAD (M_PI/2.0)
 
-#define DEFAULT_ALT_PARK (M_PI/4.0);
+#define DEFAULT_ALT_PARK (M_PI/4.0)
+
+#define TRACK_ERR_THRESH (2*SIDEREAL_RATE_RPS)//(SIDEREAL_RATE_RPS*4.0)
 namespace LFAST
 {
 class MountControl
@@ -26,17 +29,24 @@ class MountControl
         double currentAzPosn = 0.0;
         double currentAltPosn = 0.0;
 
-        double targetAzPosn = 0.0;
-        double targetAltPosn = 0.0;
+        // double targetAzPosn = 0.0;
+        // double targetAltPosn = 0.0;
 
+        double AltPosnErr = 0.0;
+        double AzPosnErr = 0.0;
 
         double azParkPosn = 0.0;
         double altParkPosn = DEFAULT_ALT_PARK;
 
+        double targetRaPosn = 0.0;
+        double targetDecPosn = 0.0;
 
 
-        double azRate_dps = 0.0;
-        double altRate_dps = 0.0;
+        double altPosnCmd_rad = 0.0;
+        double azPosnCmd_rad = 0.0;
+        
+        double azRateCmd_rps = 0.0;
+        double altRateCmd_rps = 0.0;
 
         double azOffset = 0.0;
         double altOffset = 0.0;
@@ -63,7 +73,6 @@ class MountControl
         MountControl();
 
         void printMountStatus();
-
 #if SIM_SCOPE_ENABLED
         void initSimMount();
         void updateSimMount();
@@ -106,11 +115,13 @@ class MountControl
         void park();
         void unpark();
         void updateClock(double);
-        void gotoAltAz(double altRad, double azRad);
-        void gotoRaDec(double ra, double dec);
+        void updateTargetCommands();
+        void updateTargetRaDec(double ra, double dec);
+        void updatePosnErrors();
         void syncRaDec(double ra, double dec);
         void raDecToAltAz(double ra, double dec, double *alt, double *az);
-
+        // void getTargetAltAz(double *alt, double *az);
+        // void setTargetAltAz(double alt, double az);
         void abortSlew();
 
         void getCurrentRaDec(double *ra, double *dec);
