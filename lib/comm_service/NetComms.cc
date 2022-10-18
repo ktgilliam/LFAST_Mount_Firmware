@@ -8,7 +8,13 @@
 
 #include <NetComms.h>
 
+#ifdef TEENSY41
 #include <NativeEthernet.h>
+#else
+#include <SPI.h>
+#include <Ethernet.h>
+#endif
+
 #include <Arduino.h>
 
 #include <debug.h>
@@ -24,22 +30,6 @@
 // #include <regex>
 
 #include <device.h>
-
-#define TEST_MODE_MSG_PERIOD_US 100000
-// #define TRANSMIT_BAUD_RATE   115200
-// #define TRANSMIT_BAUD_RATE 300000 // seems it must be rounded to the 10,000 (which is weird)
-
-#define MAX_MESSAGE_LENGTH_BYTES 64
-
-// assign a MAC address for the Ethernet controller.
-// fill in your address here:
-// byte mac[] = {0x04, 0xe9, 0xBE, 0xEF, 0xFE, 0xED};
-// assign an IP address for the controller:
-
-// IPAddress ip(10, 0, 0, 177);
-// IPAddress myDns(192, 168, 1, 1);
-// IPAddress gateway(192, 168, 190, 1);
-// IPAddress subnet(255, 255, 255, 0);
 
 // Initialize the Ethernet server library
 // with the IP address and port you want to use
@@ -59,10 +49,6 @@ LFAST::EthernetCommsService::EthernetCommsService()
     bool initResult = true;
     TEST_SERIAL.println("Initializing Ethernet... ");
     getTeensyMacAddr(mac);
-    // Ethernet.MACAddress(mac);
-    // TEST_SERIAL.printf("MAC: %02x:%02x:%02x:%02x:%02x:%02x\r\n",
-    //                    mac[0], mac[1], mac[2], mac[3], mac[4], mac[5]);
-    // TEST_SERIAL.println("");
     // initialize the Ethernet device
     Ethernet.begin(mac, ip);
     // Ethernet.begin(mac, ip, myDns, gateway, subnet)

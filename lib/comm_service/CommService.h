@@ -50,9 +50,9 @@ typedef enum
 
 namespace LFAST
 {
-    ///////////////// TYPES /////////////////
-    class CommsMessage
-    {
+///////////////// TYPES /////////////////
+class CommsMessage
+{
     public:
         // CommsMessage(){}
         CommsMessage()
@@ -65,7 +65,10 @@ namespace LFAST
         void printMessageInfo();
         std::string getMessageStr();
         // std::string MessageKey;
-        StaticJsonDocument<JSON_PROGMEM_SIZE> &getJsonDoc() { return this->JsonDoc; }
+        StaticJsonDocument<JSON_PROGMEM_SIZE> &getJsonDoc()
+        {
+            return this->JsonDoc;
+        }
         StaticJsonDocument<JSON_PROGMEM_SIZE> &deserialize();
 
         template <typename T>
@@ -74,10 +77,19 @@ namespace LFAST
         inline void addKeyValuePair(std::string key, T val);
         inline void addDestinationKey(std::string key);
 
-        const char *getBuffPtr() { return jsonInputBuffer; };
+        const char *getBuffPtr()
+        {
+            return jsonInputBuffer;
+        };
         char jsonInputBuffer[JSON_PROGMEM_SIZE];
-        void setProcessedFlag() { processed = true; }
-        bool hasBeenProcessed() { return processed; }
+        void setProcessedFlag()
+        {
+            processed = true;
+        }
+        bool hasBeenProcessed()
+        {
+            return processed;
+        }
 
     protected:
         StaticJsonDocument<JSON_PROGMEM_SIZE> JsonDoc;
@@ -85,41 +97,45 @@ namespace LFAST
         std::string destKey;
         // Client *client;
         // char *msgBuff;
-    };
+};
 
-    template <class T>
-    struct MessageHandler
+template <class T>
+struct MessageHandler
+{
+    void (*MsgHandlerFn)(T);
+
+    MessageHandler()
     {
-        void (*MsgHandlerFn)(T);
+        this->MsgHandlerFn = nullptr;
+    }
 
-        MessageHandler() { this->MsgHandlerFn = nullptr; }
+    MessageHandler(void (*ptr)(T))
+    {
+        this->MsgHandlerFn = ptr;
+    }
+    virtual ~MessageHandler() {};
 
-        MessageHandler(void (*ptr)(T))
+    bool call(T val)
+    {
+        if (this->MsgHandlerFn)
         {
-            this->MsgHandlerFn = ptr;
+            MsgHandlerFn(val);
+            return true;
         }
-        virtual ~MessageHandler(){};
+        return false;
+    }
+};
 
-        bool call(T val)
-        {
-            if (this->MsgHandlerFn)
-            {
-                MsgHandlerFn(val);
-                return true;
-            }
-            return false;
-        }
-    };
-
-    struct ClientConnection
-    {
-        ClientConnection(Client *_client) : client(_client) {}
-        Client *client;
-        std::vector<CommsMessage*> rxMessageQueue;
-        std::vector<CommsMessage*> txMessageQueue;
-    };
-    class CommsService
-    {
+struct ClientConnection
+{
+    ClientConnection(Client *_client) : client(_client), noReplyFlag(false) {}
+    Client *client;
+    bool noReplyFlag;
+    std::vector<CommsMessage*> rxMessageQueue;
+    std::vector<CommsMessage*> txMessageQueue;
+};
+class CommsService
+{
 
     protected:
         static void defaultMessageHandler(std::string);
@@ -127,13 +143,6 @@ namespace LFAST
         static std::vector<ClientConnection> connections;
         ClientConnection *activeConnection;
         bool commsServiceStatus;
-
-        // std::vector<CommsMessage> rxMessageQueue;
-        // std::vector<CommsMessage> txMessageQueue;
-        // typedef void (*MsgHandlerFn)(CommsMessage *);
-        // typedef std::array<MsgHandlerFn, MAX_CTRL_MESSAGES> MessageHandlerList;
-        // typedef std::map<std::string, MsgHandlerFn> MessageHandlerList;
-        // MessageHandlerList messageHandlerList;
 
     private:
         enum HandlerType
@@ -169,186 +178,186 @@ namespace LFAST
         inline bool registerMessageHandler(std::string key, MessageHandler<T> fn);
         inline bool callMessageHandler(JsonPair kvp);
 
-        virtual bool Status() { return commsServiceStatus; };
-        // virtual bool checkForNewMessages() { return false; };
+        virtual bool Status()
+        {
+            return commsServiceStatus;
+        };
 
+        void checkForNewClientData();
         virtual bool checkForNewClients();
         virtual void stopDisconnectedClients();
-        // virtual void processReceived();
-        void checkForNewClientData();
         virtual void processClientData();
         virtual void processMessage(CommsMessage *);
-
-        // void clearRxMessageQueue();
-        // void queueTxMessage(CommsMessage &);
-        // protected:
-        //     StaticJsonDocument<500> jsonDoc;
-    };
-
-    // NOTE: Teensy build environment doesn't handle build flags properly, so can't use typeid().
-    // template <class T>
-    // bool LFAST::CommsService::registerMessageHandler(std::string key, MessageHandler<T> fn)
-    // {
-    //     if (typeid(T) == typeid(int))
-    //         this->intHandlers[key] = fn;
-    //     else if (typeid(T) == typeid(unsigned int))
-    //         this->uIntHandlers[key] = fn;
-    //     else if (typeid(T) == typeid(double))
-    //         this->doubleHandlers[key] = fn;
-    //     else if (typeid(T) == typeid(bool))
-    //         this->boolHandlers[key] = fn;
-    //     else if (typeid(T) == typeid(std::string))
-    //         this->stringHandlers[key] = fn;
-    //     else
-    //         return false;
-    //     return true;
-    // }
-
-    template <class T>
-    bool LFAST::CommsService::registerMessageHandler(std::string key, MessageHandler<T> fn)
-    {
-        // TODO: Add exception handling
-        return false;
-    }
-
-    template <>
-    inline bool LFAST::CommsService::registerMessageHandler(std::string key, MessageHandler<int> fn)
-    {
-        this->intHandlers[key] = fn;
-        this->handlerTypes[key] = INT_HANDLER;
-        return true;
-    }
-    template <>
-    inline bool LFAST::CommsService::registerMessageHandler(std::string key, MessageHandler<unsigned int> fn)
-    {
-        this->uIntHandlers[key] = fn;
-        this->handlerTypes[key] = UINT_HANDLER;
-        return true;
-    }
-    template <>
-    inline bool LFAST::CommsService::registerMessageHandler(std::string key, MessageHandler<double> fn)
-    {
-        this->doubleHandlers[key] = fn;
-        this->handlerTypes[key] = DOUBLE_HANDLER;
-        return true;
-    }
-    template <>
-    inline bool LFAST::CommsService::registerMessageHandler(std::string key, MessageHandler<bool> fn)
-    {
-        this->boolHandlers[key] = fn;
-        this->handlerTypes[key] = BOOL_HANDLER;
-        return true;
-    }
-    template <>
-    inline bool LFAST::CommsService::registerMessageHandler(std::string key, MessageHandler<std::string> fn)
-    {
-        this->stringHandlers[key] = fn;
-        this->handlerTypes[key] = STRING_HANDLER;
-        return true;
-    }
-
-    template <>
-    inline bool LFAST::CommsService::callMessageHandler(std::string key, int val)
-    {
-        auto mh = this->intHandlers[key];
-        mh.call(val);
-        return true;
-    }
-
-    template <>
-    inline bool LFAST::CommsService::callMessageHandler(std::string key, unsigned int val)
-    {
-        auto mh = this->uIntHandlers[key];
-        mh.call(val);
-        return true;
-    }
-
-    template <>
-    inline bool LFAST::CommsService::callMessageHandler(std::string key, double val)
-    {
-        auto mh = this->doubleHandlers[key];
-        mh.call(val);
-        return true;
-    }
-
-    template <>
-    inline bool LFAST::CommsService::callMessageHandler(std::string key, bool val)
-    {
-        auto mh = this->boolHandlers[key];
-        mh.call(val);
-        return true;
-    }
-
-    template <>
-    inline bool LFAST::CommsService::callMessageHandler(std::string key, std::string val)
-    {
-        auto mh = this->stringHandlers[key];
-        mh.call(val);
-        return true;
-    }
-
-    template <>
-    inline double CommsMessage::getValue(std::string key)
-    {
-        return (JsonDoc[key.c_str()].as<double>());
-    }
-
-    template <>
-    inline int CommsMessage::getValue(std::string key)
-    {
-        return (JsonDoc[key.c_str()].as<int>());
-    }
-
-    template <>
-    inline unsigned int CommsMessage::getValue(std::string key)
-    {
-        return (JsonDoc[key.c_str()].as<unsigned int>());
-    }
-
-    template <>
-    inline bool CommsMessage::getValue(std::string key)
-    {
-        return (JsonDoc[key.c_str()].as<bool>());
-    }
-
-    template <>
-    inline std::string CommsMessage::getValue(std::string key)
-    {
-        return (std::string(JsonDoc[key.c_str()].as<const char *>()));
-    }
-
-    inline void CommsMessage::addDestinationKey(std::string key)
-    {
-
-        // newDoc.createNestedObject(key);
-        // newDoc[key] = JsonDoc.as<JsonObject>();
-        destKey = key;
-
-        if (!JsonDoc.isNull())
+        void setNoReplyFlag(bool f)
         {
-            StaticJsonDocument<JSON_PROGMEM_SIZE> newDoc;
-
-            for (JsonPairConst kvp : this->JsonDoc.as<JsonObjectConst>())
-            {
-                newDoc[key][kvp.key()] = kvp.value();
-            }
-            this->JsonDoc = newDoc;
+            activeConnection->noReplyFlag = f;
         }
-        else
+};
+
+// NOTE: Teensy build environment doesn't handle build flags properly, so can't use typeid().
+// template <class T>
+// bool LFAST::CommsService::registerMessageHandler(std::string key, MessageHandler<T> fn)
+// {
+//     if (typeid(T) == typeid(int))
+//         this->intHandlers[key] = fn;
+//     else if (typeid(T) == typeid(unsigned int))
+//         this->uIntHandlers[key] = fn;
+//     else if (typeid(T) == typeid(double))
+//         this->doubleHandlers[key] = fn;
+//     else if (typeid(T) == typeid(bool))
+//         this->boolHandlers[key] = fn;
+//     else if (typeid(T) == typeid(std::string))
+//         this->stringHandlers[key] = fn;
+//     else
+//         return false;
+//     return true;
+// }
+
+template <class T>
+bool LFAST::CommsService::registerMessageHandler(std::string key, MessageHandler<T> fn)
+{
+    // TODO: Add exception handling
+    return false;
+}
+
+template <>
+inline bool LFAST::CommsService::registerMessageHandler(std::string key, MessageHandler<int> fn)
+{
+    this->intHandlers[key] = fn;
+    this->handlerTypes[key] = INT_HANDLER;
+    return true;
+}
+template <>
+inline bool LFAST::CommsService::registerMessageHandler(std::string key, MessageHandler<unsigned int> fn)
+{
+    this->uIntHandlers[key] = fn;
+    this->handlerTypes[key] = UINT_HANDLER;
+    return true;
+}
+template <>
+inline bool LFAST::CommsService::registerMessageHandler(std::string key, MessageHandler<double> fn)
+{
+    this->doubleHandlers[key] = fn;
+    this->handlerTypes[key] = DOUBLE_HANDLER;
+    return true;
+}
+template <>
+inline bool LFAST::CommsService::registerMessageHandler(std::string key, MessageHandler<bool> fn)
+{
+    this->boolHandlers[key] = fn;
+    this->handlerTypes[key] = BOOL_HANDLER;
+    return true;
+}
+template <>
+inline bool LFAST::CommsService::registerMessageHandler(std::string key, MessageHandler<std::string> fn)
+{
+    this->stringHandlers[key] = fn;
+    this->handlerTypes[key] = STRING_HANDLER;
+    return true;
+}
+
+template <>
+inline bool LFAST::CommsService::callMessageHandler(std::string key, int val)
+{
+    auto mh = this->intHandlers[key];
+    mh.call(val);
+    return true;
+}
+
+template <>
+inline bool LFAST::CommsService::callMessageHandler(std::string key, unsigned int val)
+{
+    auto mh = this->uIntHandlers[key];
+    mh.call(val);
+    return true;
+}
+
+template <>
+inline bool LFAST::CommsService::callMessageHandler(std::string key, double val)
+{
+    auto mh = this->doubleHandlers[key];
+    mh.call(val);
+    return true;
+}
+
+template <>
+inline bool LFAST::CommsService::callMessageHandler(std::string key, bool val)
+{
+    auto mh = this->boolHandlers[key];
+    mh.call(val);
+    return true;
+}
+
+template <>
+inline bool LFAST::CommsService::callMessageHandler(std::string key, std::string val)
+{
+    auto mh = this->stringHandlers[key];
+    mh.call(val);
+    return true;
+}
+
+template <>
+inline double CommsMessage::getValue(std::string key)
+{
+    return (JsonDoc[key.c_str()].as<double>());
+}
+
+template <>
+inline int CommsMessage::getValue(std::string key)
+{
+    return (JsonDoc[key.c_str()].as<int>());
+}
+
+template <>
+inline unsigned int CommsMessage::getValue(std::string key)
+{
+    return (JsonDoc[key.c_str()].as<unsigned int>());
+}
+
+template <>
+inline bool CommsMessage::getValue(std::string key)
+{
+    return (JsonDoc[key.c_str()].as<bool>());
+}
+
+template <>
+inline std::string CommsMessage::getValue(std::string key)
+{
+    return (std::string(JsonDoc[key.c_str()].as<const char *>()));
+}
+
+inline void CommsMessage::addDestinationKey(std::string key)
+{
+
+    // newDoc.createNestedObject(key);
+    // newDoc[key] = JsonDoc.as<JsonObject>();
+    destKey = key;
+
+    if (!JsonDoc.isNull())
+    {
+        StaticJsonDocument<JSON_PROGMEM_SIZE> newDoc;
+
+        for (JsonPairConst kvp : this->JsonDoc.as<JsonObjectConst>())
         {
-            JsonDoc.createNestedObject(destKey);
+            newDoc[key][kvp.key()] = kvp.value();
         }
-
-        // = this->getJsonDoc();
-        // JsonObject newObj = JsonDoc.
+        this->JsonDoc = newDoc;
+    }
+    else
+    {
+        JsonDoc.createNestedObject(destKey);
     }
 
-    template <typename T>
-    inline void CommsMessage::addKeyValuePair(std::string key, T val)
-    {
-        if (this->destKey.length() > 0)
-            JsonDoc[this->destKey][key] = val;
-        else
-            JsonDoc[key] = val;
-    };
+    // = this->getJsonDoc();
+    // JsonObject newObj = JsonDoc.
+}
+
+template <typename T>
+inline void CommsMessage::addKeyValuePair(std::string key, T val)
+{
+    if (this->destKey.length() > 0)
+        JsonDoc[this->destKey][key] = val;
+    else
+        JsonDoc[key] = val;
+};
 }
