@@ -11,8 +11,8 @@
 #define SCOPE_PARK_TIME_COUNT 100
 #endif
 
-#define MIN_ALT_ANGLE_DEG 0
-#define MAX_ALT_ANGLE_DEG 90
+#define MIN_ALT_ANGLE_DEG 0.0
+#define MAX_ALT_ANGLE_DEG 90.0
 
 namespace LFAST
 {
@@ -99,7 +99,7 @@ class MountControl
         void park();
         void unpark();
         void updateClock(double);
-        void gotoAltAz(double alt, double az);
+        void gotoAltAz(double altDeg, double azDeg);
         void gotoRaDec(double ra, double dec);
         void syncRaDec(double ra, double dec);
         void raDecToAltAz(double ra, double dec, double *alt, double *az);
