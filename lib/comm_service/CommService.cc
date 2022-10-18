@@ -118,10 +118,10 @@ bool LFAST::CommsService::getNewMessages(ClientConnection &connection)
 
 void LFAST::CommsMessage::printMessageInfo()
 {
-
-    TEST_SERIAL.printf("\tMESSAGE ID: %u\r\n", (unsigned int)this->getBuffPtr());
+    CURSOR_TO_DEBUG_ROW(-3);
+    TEST_SERIAL.printf("MESSAGE ID: %u\033[0K\r\n", (unsigned int)this->getBuffPtr());
     // TEST_SERIAL.printf("\tMESSAGE Input Buffer: %s (%u bytes)\r\n", this->jsonInputBuffer, std::strlen(this->jsonInputBuffer));
-    TEST_SERIAL.print("\tMESSAGE Input Buffer: ");
+    TEST_SERIAL.print("MESSAGE Input Buffer: \033[0K");
 
     bool nullTermFound = false;
     unsigned int ii = 0;
@@ -163,9 +163,11 @@ void LFAST::CommsService::processMessage(CommsMessage *msg)
 {
     if (msg->hasBeenProcessed())
     {
-        TEST_SERIAL.println("This was the problem.");
+        TEST_SERIAL.println("Something went wrong processing messages.");
         return;
     }
+
+    msg->printMessageInfo();
     StaticJsonDocument<JSON_PROGMEM_SIZE> &doc = msg->deserialize();
     JsonObject msgRoot = doc.as<JsonObject>();
     JsonObject msgObject = msgRoot["MountMessage"];

@@ -6,14 +6,16 @@
 
 #if SIM_SCOPE_ENABLED
 #define SIDEREAL_RATE_DPS (15.041067 / 3600.0)
-#define DEFAULT_AZ_RATE (SIDEREAL_RATE_DPS * 4)
-#define DEFAULT_ALT_RATE (SIDEREAL_RATE_DPS * 4)
+#define AZ_SLEW_RATE (SIDEREAL_RATE_DPS*32)
+#define ALT_SLEW_RATE (SIDEREAL_RATE_DPS*32)
+
 #define SCOPE_PARK_TIME_COUNT 100
 #endif
 
-#define MIN_ALT_ANGLE_DEG 0.0
-#define MAX_ALT_ANGLE_DEG 90.0
+#define MIN_ALT_ANGLE_RAD 0.0
+#define MAX_ALT_ANGLE_RAD (M_PI/2.0)
 
+#define DEFAULT_ALT_PARK (M_PI/4.0);
 namespace LFAST
 {
 class MountControl
@@ -28,8 +30,8 @@ class MountControl
         double targetAltPosn = 0.0;
 
 
-        double azParkPosn = 3.14159;
-        double altParkPosn = 0.0;
+        double azParkPosn = 0.0;
+        double altParkPosn = DEFAULT_ALT_PARK;
 
 
 
@@ -42,7 +44,7 @@ class MountControl
         double localLatitude = 0.0;
         double localLongitude = 0.0;
 
-        double deltaTime = 0.0;
+        double deltaTimeSec = 0.0;
 
     protected:
         enum MountStatus
@@ -52,6 +54,7 @@ class MountControl
             MOUNT_PARKING,
             MOUNT_SLEWING,
             MOUNT_HOMING,
+            MOUNT_TRACKING
         };
 
         MountStatus mountStatus;
@@ -75,23 +78,27 @@ class MountControl
         }
         bool mountIsIdle()
         {
-            return mountStatus == LFAST::MountControl::MOUNT_IDLE;
+            return mountStatus == MOUNT_IDLE;
         }
         bool mountIsParked()
         {
-            return mountStatus == LFAST::MountControl::MOUNT_PARKED;
+            return mountStatus == MOUNT_PARKED;
         }
         bool mountIsParking()
         {
-            return mountStatus == LFAST::MountControl::MOUNT_PARKING;
+            return mountStatus == MOUNT_PARKING;
         }
         bool mountIsSlewing()
         {
-            return mountStatus == LFAST::MountControl::MOUNT_SLEWING;
+            return mountStatus == MOUNT_SLEWING;
         }
         bool mountIsHoming()
         {
-            return mountStatus == LFAST::MountControl::MOUNT_HOMING;
+            return mountStatus == MOUNT_HOMING;
+        }
+        bool mountIsTracking()
+        {
+            return mountStatus == MOUNT_TRACKING;
         }
 
 
@@ -99,7 +106,7 @@ class MountControl
         void park();
         void unpark();
         void updateClock(double);
-        void gotoAltAz(double altDeg, double azDeg);
+        void gotoAltAz(double altRad, double azRad);
         void gotoRaDec(double ra, double dec);
         void syncRaDec(double ra, double dec);
         void raDecToAltAz(double ra, double dec, double *alt, double *az);
@@ -109,7 +116,7 @@ class MountControl
         void getCurrentRaDec(double *ra, double *dec);
         void altAzToHADec(double alt, double az, double *ha, double *dec);
 
-
+        static std::string getClockStr(double lst);
         // double getCurrentAlt()
         // {
         //     return currentAltPosn - altOffset;

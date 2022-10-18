@@ -21,7 +21,7 @@
 
 void updateAltAzGotoCommand(uint8_t axis, double val);
 void updateRaDecGotoCommand(uint8_t axis, double val);
-void ackSyncCommand(uint8_t axis, double val);
+void updateSyncCommand(uint8_t axis, double val);
 
 // Message Handlers:
 void handshake(unsigned int val);
@@ -30,7 +30,7 @@ void updateLatitude(double lat);
 void updateLongitude(double lon);
 void sendRaDec(double lst);
 void sendParkedStatus(double lst);
-void sendTrackRate(double lst);
+void sendTrackStatus(double lst);
 void parkScope(double lst);
 void unparkScope(double lst);
 void noDisconnect(bool noDiscoFlag);
@@ -43,8 +43,8 @@ void slewToDec(double dec);
 void slewToAz(double tgtAzPosn);
 void slewToAlt(double tgtAltPosn);
 
-void syncAzPosition(double currentAzPosn);
-void syncAltPosition(double currentElPosn);
+void syncRaPosition(double currentRaPosn);
+void syncDecPosition(double currentDecPosn);
 void findHome(double lst);
 
 LFAST::EthernetCommsService *commsService;
@@ -97,7 +97,7 @@ void setup(void)
     commsService->registerMessageHandler<double>("longitude", updateLongitude);
     commsService->registerMessageHandler<double>("RequestRaDec", sendRaDec);
     commsService->registerMessageHandler<double>("IsParked", sendParkedStatus);
-    commsService->registerMessageHandler<double>("getTrackRate", sendTrackRate);
+    commsService->registerMessageHandler<double>("IsTracking", sendTrackStatus);
     commsService->registerMessageHandler<double>("Park", parkScope);
     commsService->registerMessageHandler<double>("Unpark", unparkScope);
     commsService->registerMessageHandler<double>("AbortSlew", abortSlew);
@@ -107,11 +107,13 @@ void setup(void)
     commsService->registerMessageHandler<double>("slewToAzPosn", slewToAz);
     commsService->registerMessageHandler<double>("slewToAltPosn", slewToAlt);
 
-    commsService->registerMessageHandler<double>("slewToRaPosn", slewToRa);
-    commsService->registerMessageHandler<double>("slewToDecPosn", slewToDec);
+    commsService->registerMessageHandler<double>("slewToRa", slewToRa);
+    commsService->registerMessageHandler<double>("slewToDec", slewToDec);
 
-    commsService->registerMessageHandler<double>("syncAzPosn", syncAzPosition);
-    commsService->registerMessageHandler<double>("syncAltPosn", syncAltPosition);
+    commsService->registerMessageHandler<double>("syncRaPosn", syncRaPosition);
+    commsService->registerMessageHandler<double>("syncDecPosn", syncDecPosition);
+
+
     commsService->registerMessageHandler<double>("FindHome", findHome);
 
     delay(500);
@@ -172,6 +174,8 @@ void updateLatitude(double lat)
 #if SIM_SCOPE_ENABLED
 #endif
     mountControl->setLatitude(lat);
+    TEST_SERIAL.printf("\033[%u;%uH", 7, 0);
+    TEST_SERIAL.printf("Latitude:\t%8.4f", lat);
 }
 
 void updateLongitude(double lon)
@@ -179,12 +183,15 @@ void updateLongitude(double lon)
 #if SIM_SCOPE_ENABLED
 #endif
     mountControl->setLongitude(lon);
+    TEST_SERIAL.printf("\033[%u;%uH", 8, 0);
+    TEST_SERIAL.printf("Longitude:\t%8.4f", lon);
 }
 
 void sendRaDec(double lst)
 {
     LFAST::CommsMessage newMsg;
 #if SIM_SCOPE_ENABLED
+    mountControl->updateClock(lst);
     mountControl->updateSimMount();
 #endif
 
@@ -199,6 +206,7 @@ void sendRaDec(double lst)
 void sendParkedStatus(double lst)
 {
 #if SIM_SCOPE_ENABLED
+    mountControl->updateClock(lst);
     mountControl->updateSimMount();
 #endif
     LFAST::CommsMessage newMsg;
@@ -206,13 +214,14 @@ void sendParkedStatus(double lst)
     commsService->sendMessage(newMsg, LFAST::CommsService::ACTIVE_CONNECTION);
 }
 
-void sendTrackRate(double lst)
+void sendTrackStatus(double lst)
 {
 #if SIM_SCOPE_ENABLED
+    mountControl->updateClock(lst);
     mountControl->updateSimMount();
 #endif
     LFAST::CommsMessage newMsg;
-    newMsg.addKeyValuePair<double>("TrackRate", mountControl->getTrackRate());
+    newMsg.addKeyValuePair<bool>("IsTracking", mountControl->mountIsTracking());
     commsService->sendMessage(newMsg, LFAST::CommsService::ACTIVE_CONNECTION);
 }
 
@@ -221,6 +230,7 @@ void parkScope(double lst)
     mountControl->park();
 
 #if SIM_SCOPE_ENABLED
+    mountControl->updateClock(lst);
     mountControl->updateSimMount();
 #endif
 
@@ -234,6 +244,7 @@ void unparkScope(double lst)
     mountControl->unpark();
 
 #if SIM_SCOPE_ENABLED
+    mountControl->updateClock(lst);
     mountControl->updateSimMount();
 #endif
 
@@ -260,10 +271,11 @@ void abortSlew(double lst)
 void sendSlewCompleteStatus(double lst)
 {
 #if SIM_SCOPE_ENABLED
+    mountControl->updateClock(lst);
     mountControl->updateSimMount();
 #endif
     LFAST::CommsMessage newMsg;
-    newMsg.addKeyValuePair<bool>("SlewIsComplete", mountControl->mountIsIdle());
+    newMsg.addKeyValuePair<bool>("IsSlewComplete", mountControl->mountIsIdle());
     commsService->sendMessage(newMsg, LFAST::CommsService::ACTIVE_CONNECTION);
 }
 
@@ -286,14 +298,14 @@ void slewToDec(double targetDec)
     updateRaDecGotoCommand(LFAST::MountControl::DEC_AXIS, targetDec);
 }
 
-void syncAzPosition(double currentAzPosn)
+void syncRaPosition(double currentRaPosn)
 {
-    ackSyncCommand(LFAST::MountControl::AZ_AXIS, currentAzPosn);
+    updateSyncCommand(LFAST::MountControl::RA_AXIS, currentRaPosn);
 }
 
-void syncAltPosition(double currentAltPosn)
+void syncDecPosition(double currentDecPosn)
 {
-    ackSyncCommand(LFAST::MountControl::ALT_AXIS, currentAltPosn);
+    updateSyncCommand(LFAST::MountControl::DEC_AXIS, currentDecPosn);
 }
 
 void findHome(double lst)
@@ -315,12 +327,12 @@ void updateAltAzGotoCommand(uint8_t axis, double val)
     static double azVal = 0.0;
     static double altVal = 0.0;
 
-    if(axis == LFAST::MountControl::AZ_AXIS)
+    if (axis == LFAST::MountControl::AZ_AXIS)
     {
         azUpdated = true;
         azVal = val;
     }
-    else if(axis == LFAST::MountControl::ALT_AXIS)
+    else if (axis == LFAST::MountControl::ALT_AXIS)
     {
         altUpdated = true;
         altVal = val;
@@ -338,7 +350,6 @@ void updateAltAzGotoCommand(uint8_t axis, double val)
     }
 }
 
-
 void updateRaDecGotoCommand(uint8_t axis, double val)
 {
     static bool raUpdated = false;
@@ -346,12 +357,12 @@ void updateRaDecGotoCommand(uint8_t axis, double val)
     static double raVal = 0.0;
     static double decVal = 0.0;
 
-    if(axis == LFAST::MountControl::RA_AXIS)
+    if (axis == LFAST::MountControl::RA_AXIS)
     {
         raVal = val;
         raUpdated = true;
     }
-    else if(axis == LFAST::MountControl::DEC_AXIS)
+    else if (axis == LFAST::MountControl::DEC_AXIS)
     {
         decVal = val;
         decUpdated = true;
@@ -359,6 +370,8 @@ void updateRaDecGotoCommand(uint8_t axis, double val)
 
     if (raUpdated && decUpdated)
     {
+        // CURSOR_TO_DEBUG_ROW(-1);
+        // // TEST_SERIAL.printf("New Slew Coords: RA[%8.4f]/DEC[%8.4f]", raVal, decVal);
         LFAST::CommsMessage newMsg;
         newMsg.addKeyValuePair<std::string>("slewToRa", "$OK^");
         newMsg.addKeyValuePair<std::string>("slewToDec", "$OK^");
@@ -369,20 +382,19 @@ void updateRaDecGotoCommand(uint8_t axis, double val)
     }
 }
 
-
-void ackSyncCommand(uint8_t axis, double val)
+void updateSyncCommand(uint8_t axis, double val)
 {
     static bool raUpdated = false;
     static bool decUpdated = false;
     static double raVal = 0.0;
     static double decVal = 0.0;
 
-    if(axis == LFAST::MountControl::RA_AXIS)
+    if (axis == LFAST::MountControl::RA_AXIS)
     {
         raVal = val;
         raUpdated = true;
     }
-    else if(axis == LFAST::MountControl::DEC_AXIS)
+    else if (axis == LFAST::MountControl::DEC_AXIS)
     {
         decVal = val;
         decUpdated = true;
