@@ -123,18 +123,35 @@ void LFAST::MountControl_CLI::serviceCLI()
     {
         // read the incoming byte:
         char c = TEST_SERIAL.read();
-        // Put it in the buffer
-        if (rxPtr < (rxBuff + CLI_BUFF_LENGTH - 1))
-        {
-            *rxPtr++ = c;
-            currentInputCol++;
-        }
-        // say what you got:
-        TEST_SERIAL.printf("%c", c);
-        // TEST_SERIAL.print(c, HEX);
+
         if (c == '\r' || c == '\n')
         {
-            resetPrompt();
+            handleCliCommand();
+        }
+        else
+        {
+            // say what you got:
+            TEST_SERIAL.printf("%c", c);
+            // Put it in the buffer
+            if (rxPtr < (rxBuff + CLI_BUFF_LENGTH - 1))
+            {
+                *rxPtr++ = c;
+                currentInputCol++;
+            }
         }
     }
+}
+
+void LFAST::MountControl_CLI::handleCliCommand()
+{
+    CURSOR_TO_ROW(PROMPT_FEEDBACK);
+    TEST_SERIAL.printf("%s: Command Not Found.\r\n", rxBuff);
+
+    // for (int ii = 0; ii < 4; ii++)
+    // {
+    //     TEST_SERIAL.printf("%c ", rxBuff[ii]);
+    //     TEST_SERIAL.print(rxBuff[ii], HEX);
+    //     TEST_SERIAL.println();
+    // }
+    resetPrompt();
 }

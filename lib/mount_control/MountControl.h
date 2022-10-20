@@ -53,16 +53,18 @@ namespace LFAST
             EMPTY_5,
             EMPTY_6,
             PROMPT,
+            PROMPT_FEEDBACK
         };
         const uint16_t fieldStartCol = 24;
         uint32_t currentInputCol;
         char rxBuff[CLI_BUFF_LENGTH];
         char *rxPtr;
+        void handleCliCommand();
+        void resetPrompt();
     public:
         MountControl_CLI();
         void updateStatusFields(MountControl &);
         void printMountStatusLabels();
-        void resetPrompt();
         void serviceCLI();
     };
 
