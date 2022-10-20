@@ -2,7 +2,6 @@
 
 #include <cmath>
 
-
 #include <DriveControl.h>
 #include <NetComms.h>
 #include <mathFuncs.h>
@@ -10,13 +9,14 @@
 #include <debug.h>
 
 LFAST::MountControl::MountControl()
-: AzDriveControl("AZ")
+    : AzDriveControl("AZ"), AltDriveControl("ALT")
 {
 #if SIM_SCOPE_ENABLED
     initSimMount();
 #endif
     DriveControl::configureLoopTimer(DEFAULT_UPDATE_PRD);
     DriveControl::startLoopTimer();
+    this->initializeCLI();
 }
 
 void LFAST::MountControl::updateClock(double lst)
@@ -42,44 +42,14 @@ std::string LFAST::MountControl::getClockStr(double lst)
     return ss.str();
 }
 
+void LFAST::MountControl::initializeCLI()
+{
+    this->cli.printMountStatusLabels();
+}
 void LFAST::MountControl::printMountStatus()
 {
+    cli.updateStatusFields(*this);
     // TEST_SERIAL.printf("\033[32m");
-    TEST_SERIAL.printf("\033[%u;%uH", 10, 0);
-    TEST_SERIAL.printf("\033[37mLocal Sidereal Time:\033[22G%s\r\n", getClockStr(this->localSiderealTime).c_str());
-    TEST_SERIAL.printf("\033[0K\033[37mMount Status:\033[22G");
-    switch (this->mountStatus)
-    {
-    case LFAST::MountControl::MOUNT_IDLE:
-        TEST_SERIAL.println("\033[37mIDLE");
-        break;
-    case LFAST::MountControl::MOUNT_PARKING:
-        TEST_SERIAL.println("\033[31mPARKING");
-        break;
-    case LFAST::MountControl::MOUNT_HOMING:
-        TEST_SERIAL.println("\033[31mHOMING");
-        break;
-    case LFAST::MountControl::MOUNT_SLEWING:
-        TEST_SERIAL.println("\033[33mSLEWING");
-        break;
-    case LFAST::MountControl::MOUNT_PARKED:
-        TEST_SERIAL.println("\033[37mPARKED");
-        break;
-    case LFAST::MountControl::MOUNT_TRACKING:
-        TEST_SERIAL.println("\033[32mTRACKING");
-        break;
-    }
-    TEST_SERIAL.println();
-
-    TEST_SERIAL.printf("\033[37mCurrent Altitude:\033[20G%8.4f\033[0K\r\n", rad2deg(this->currentAltPosn));
-    TEST_SERIAL.printf("\033[37mTarget Altitude:\033[20G%8.4f\033[0K\r\n", rad2deg(altPosnCmd_rad));
-    TEST_SERIAL.printf("\033[37mAltitude Rate:\033[20G%8.4f\033[0K\r\n", rad2deg(altRateCmd_rps));
-    TEST_SERIAL.println();
-
-    TEST_SERIAL.printf("\033[37mCurrent Azimuth:\033[20G%8.4f\033[0K\r\n", rad2deg(this->currentAzPosn));
-    TEST_SERIAL.printf("\033[37mTarget Azimuth:\033[20G%8.4f\033[0K\r\n", rad2deg(azPosnCmd_rad));
-    TEST_SERIAL.printf("\033[37mAzimuth Rate:\033[20G%8.4f\033[0K\r\n", rad2deg(azRateCmd_rps));
-    TEST_SERIAL.println();
 }
 
 void LFAST::MountControl::findHome()
@@ -113,12 +83,10 @@ void LFAST::MountControl::unpark()
 #endif
 }
 
-
-
 void LFAST::MountControl::updatePosnErrors()
 {
-    AltPosnErr = altPosnCmd_rad-currentAltPosn;
-    AzPosnErr = azPosnCmd_rad-currentAzPosn;
+    AltPosnErr = altPosnCmd_rad - currentAltPosn;
+    AzPosnErr = azPosnCmd_rad - currentAzPosn;
     while (AzPosnErr > M_PI)
     {
         AzPosnErr -= (2 * M_PI);
@@ -136,19 +104,17 @@ void LFAST::MountControl::getTrackingRates(double *dAlt, double *dAz)
 
     // double d = deg2rad(targetDecPosn); // Target declination
     // double q = getParallacticAngle();
-    
 }
 
 double LFAST::MountControl::getParallacticAngle()
 {
     double h = localSiderealTime; // hour angle
-    // double a = ha2rad(h - targetRaPosn); // Target right ascension 
+    // double a = ha2rad(h - targetRaPosn); // Target right ascension
     double d = deg2rad(targetDecPosn); // Target declination
-    double p = deg2rad(localLatitude);  // Latitude
-    double q = atan2(sin(h), (cos(d)*tan(p)-sin(d)*cos(h)));
+    double p = deg2rad(localLatitude); // Latitude
+    double q = atan2(sin(h), (cos(d) * tan(p) - sin(d) * cos(h)));
     return q;
 }
-
 
 void LFAST::MountControl::raDecToAltAz(double ra, double dec, double *alt, double *az)
 {
@@ -239,6 +205,7 @@ void LFAST::MountControl::initSimMount()
 
 void LFAST::MountControl::updateTargetCommands()
 {
+
     switch (this->mountStatus)
     {
     case LFAST::MountControl::MOUNT_IDLE:
@@ -340,4 +307,6 @@ void LFAST::MountControl::updateSimMount()
         currentAzPosn -= (2 * M_PI);
     else if (currentAzPosn < 0)
         currentAzPosn += (2 * M_PI);
+
+    cli.updateStatusFields(*this);
 }

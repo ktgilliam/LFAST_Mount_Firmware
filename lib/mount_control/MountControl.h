@@ -1,9 +1,11 @@
 #pragma once
 
+#include <cinttypes>
 #include <DriveControl.h>
 #include <NetComms.h>
+#include <cliMacros.h>
 
-#define DEFAULT_UPDATE_PRD 100000 // Microseconds
+#define DEFAULT_UPDATE_PRD 150000 // Microseconds
 
 #define SIM_SCOPE_ENABLED 1
 #define SLEW_MULT 512
@@ -22,8 +24,48 @@
 #define DEFAULT_ALT_PARK (M_PI / 4.0)
 
 #define TRACK_ERR_THRESH (2 * SIDEREAL_RATE_RPS) //(SIDEREAL_RATE_RPS*4.0)
+
+#define CLI_BUFF_LENGTH 128
 namespace LFAST
 {
+
+    class MountControl;
+    class MountControl_CLI
+    {
+    protected:
+        enum CLI_ROWS
+        {
+            TOP_HEADER,
+            MIDDLE_HEADER,
+            LOWER_HEADER,
+            EMPTY_1,
+            EMPTY_2,
+            MOUNT_STATUS,
+            SIDEREAL_TIME,
+            EMPTY_3,
+            CURRENT_ALT,
+            TARGET_ALT,
+            ALT_RATE,
+            EMPTY_4,
+            CURRENT_AZ,
+            TARGET_AZ,
+            AZ_RATE,
+            EMPTY_5,
+            EMPTY_6,
+            PROMPT,
+        };
+        const uint16_t fieldStartCol = 24;
+        uint32_t currentInputCol;
+        char rxBuff[CLI_BUFF_LENGTH];
+        char *rxPtr;
+    public:
+        MountControl_CLI();
+        void updateStatusFields(MountControl &);
+        void printMountStatusLabels();
+        void resetPrompt();
+        void serviceCLI();
+    };
+
     class MountControl
     {
     private:
@@ -72,8 +114,13 @@ namespace LFAST
         MountStatus mountStatus;
 
         volatile DriveControl AzDriveControl;
+        volatile DriveControl AltDriveControl;
+        MountControl_CLI cli;
+
     public:
         MountControl();
+
+        void initializeCLI();
 
         void printMountStatus();
 #if SIM_SCOPE_ENABLED
@@ -125,6 +172,7 @@ namespace LFAST
         void getTrackingRates(double *dAlt, double *dAz);
         double getParallacticAngle();
         // void setTargetAltAz(double alt, double az);
+        void serviceCLI(){cli.serviceCLI();}
         void abortSlew();
 
         void getCurrentRaDec(double *ra, double *dec);
@@ -148,6 +196,8 @@ namespace LFAST
             RA_AXIS = 2,
             DEC_AXIS = 3
         };
+
+        friend class MountControl_CLI;
     };
 
 }

@@ -22,9 +22,9 @@ namespace LFAST
         void getCurrentFeedback() {}
         void getVelocityFeedback() {}
         void getPositionFeedback() {}
+        void printLabel();
         static void configureLoopTimer(uint32_t);
         static void startLoopTimer();
-
     protected:
         typedef enum
         {

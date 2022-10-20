@@ -69,11 +69,7 @@ void deviceSetup()
 void setup(void)
 {
     deviceSetup();
-    CLEAR_CONSOLE();
-    CURSOR_TO_ZEROZERO();
-    TEST_SERIAL.printf("################################################################################################\r\n");
-    TEST_SERIAL.printf("###################################### LFAST MOUNT CONTROL #####################################\r\n");
-    TEST_SERIAL.printf("################################################################################################\r\n");
+
     commsService = new LFAST::EthernetCommsService();
     mountControl = new LFAST::MountControl();
 
@@ -121,6 +117,7 @@ void loop(void)
     commsService->checkForNewClientData();
     commsService->processClientData();
     commsService->stopDisconnectedClients();
+    mountControl->serviceCLI();
 }
 
 void handshake(unsigned int val)
@@ -156,8 +153,8 @@ void updateLatitude(double lat)
 #if SIM_SCOPE_ENABLED
 #endif
     mountControl->setLatitude(lat);
-    TEST_SERIAL.printf("\033[%u;%uH", 7, 0);
-    TEST_SERIAL.printf("Latitude:\t%8.4f", lat);
+    // TEST_SERIAL.printf("\033[%u;%uH", 7, 0);
+    // TEST_SERIAL.printf("Latitude:\t%8.4f", lat);
 }
 
 void updateLongitude(double lon)
@@ -165,8 +162,8 @@ void updateLongitude(double lon)
 #if SIM_SCOPE_ENABLED
 #endif
     mountControl->setLongitude(lon);
-    TEST_SERIAL.printf("\033[%u;%uH", 8, 0);
-    TEST_SERIAL.printf("Longitude:\t%8.4f", lon);
+    // TEST_SERIAL.printf("\033[%u;%uH", 8, 0);
+    // TEST_SERIAL.printf("Longitude:\t%8.4f", lon);
 }
 
 void sendRaDec(double lst)
@@ -182,7 +179,7 @@ void sendRaDec(double lst)
     newMsg.addKeyValuePair<double>("RA", ra);
     newMsg.addKeyValuePair<double>("DEC", dec);
     commsService->sendMessage(newMsg, LFAST::CommsService::ACTIVE_CONNECTION);
-    mountControl->printMountStatus();
+    // mountControl->printMountStatus();
 }
 
 void sendParkedStatus(double lst)
