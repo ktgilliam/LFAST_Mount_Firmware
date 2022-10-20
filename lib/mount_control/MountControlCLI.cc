@@ -113,6 +113,7 @@ void LFAST::MountControl_CLI::resetPrompt()
     CLEAR_TO_END_OF_ROW();
     currentInputCol = 4;
     CURSOR_TO_COL(currentInputCol);
+    // BLINKING();
 }
 
 void LFAST::MountControl_CLI::serviceCLI()
@@ -123,11 +124,14 @@ void LFAST::MountControl_CLI::serviceCLI()
         // read the incoming byte:
         char c = TEST_SERIAL.read();
         // Put it in the buffer
-        *rxPtr++ = c;
+        if (rxPtr < (rxBuff + CLI_BUFF_LENGTH - 1))
+        {
+            *rxPtr++ = c;
+            currentInputCol++;
+        }
         // say what you got:
         TEST_SERIAL.printf("%c", c);
         // TEST_SERIAL.print(c, HEX);
-        currentInputCol++;
         if (c == '\r' || c == '\n')
         {
             resetPrompt();

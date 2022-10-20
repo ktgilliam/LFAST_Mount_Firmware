@@ -18,3 +18,6 @@
 #define CYAN()    TEST_SERIAL.printf("\033[36m");
 #define WHITE()   TEST_SERIAL.printf("\033[37m");
 #define RESET()   TEST_SERIAL.printf("\033[0m");
+
+#define BLINKING() TEST_SERIAL.printf("\033[5m");
+#define NOT_BLINKING() TEST_SERIAL.printf("\033[25m");
