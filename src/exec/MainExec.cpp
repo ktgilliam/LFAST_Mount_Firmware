@@ -17,7 +17,7 @@
 #include <NetComms.h>
 #include <cmath>
 
-#include "Telescope.h"
+#include <MountControl.h>
 
 // void updateAltAzGotoCommand(uint8_t axis, double val);
 void updateRaDecGotoCommand(uint8_t axis, double val);
@@ -106,24 +106,13 @@ void setup(void)
     commsService->registerMessageHandler<double>("syncRaPosn", syncRaPosition);
     commsService->registerMessageHandler<double>("syncDecPosn", syncDecPosition);
 
-
     commsService->registerMessageHandler<double>("FindHome", findHome);
 
     delay(500);
 
     initHeartbeat();
     resetHeartbeat();
-    uint8_t modePinState = digitalRead(MODE_PIN);
-    if (modePinState == HIGH)
-    {
-        setHeartBeatPeriod(100000);
-        // TEST_SERIAL.println("CAN Test Mode: Talker. ");
-    }
-    else
-    {
-        setHeartBeatPeriod(400000);
-        // TEST_SERIAL.println("CAN Test Mode: Listener. ");
-    }
+    setHeartBeatPeriod(400000);
 }
 
 void loop(void)
@@ -312,7 +301,6 @@ void findHome(double lst)
     newMsg.addKeyValuePair<std::string>("FindHome", "$OK^");
     commsService->sendMessage(newMsg, LFAST::CommsService::ACTIVE_CONNECTION);
 }
-
 
 void updateRaDecGotoCommand(uint8_t axis, double val)
 {

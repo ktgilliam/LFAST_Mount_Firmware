@@ -1,28 +1,31 @@
 #pragma once
 
+#include <DriveControl.h>
 #include <NetComms.h>
+
+#define DEFAULT_UPDATE_PRD 100000 // Microseconds
 
 #define SIM_SCOPE_ENABLED 1
 #define SLEW_MULT 512
 
 #if SIM_SCOPE_ENABLED
-#define SIDEREAL_RATE_RPS (0.000072921)//(15.041067 / 3600.0 * M_PI / 180.0)
-#define AZ_SLEW_RATE (SIDEREAL_RATE_RPS*SLEW_MULT)
-#define ALT_SLEW_RATE (SIDEREAL_RATE_RPS*SLEW_MULT)
+#define SIDEREAL_RATE_RPS (0.000072921) //(15.041067 / 3600.0 * M_PI / 180.0)
+#define AZ_SLEW_RATE (SIDEREAL_RATE_RPS * SLEW_MULT)
+#define ALT_SLEW_RATE (SIDEREAL_RATE_RPS * SLEW_MULT)
 
 #define SCOPE_PARK_TIME_COUNT 100
 #endif
 
 #define MIN_ALT_ANGLE_RAD 0.0
-#define MAX_ALT_ANGLE_RAD (M_PI/2.0)
+#define MAX_ALT_ANGLE_RAD (M_PI / 2.0)
 
-#define DEFAULT_ALT_PARK (M_PI/4.0)
+#define DEFAULT_ALT_PARK (M_PI / 4.0)
 
-#define TRACK_ERR_THRESH (2*SIDEREAL_RATE_RPS)//(SIDEREAL_RATE_RPS*4.0)
+#define TRACK_ERR_THRESH (2 * SIDEREAL_RATE_RPS) //(SIDEREAL_RATE_RPS*4.0)
 namespace LFAST
 {
-class MountControl
-{
+    class MountControl
+    {
     private:
         double localSiderealTime = 0.0;
 
@@ -41,10 +44,9 @@ class MountControl
         double targetRaPosn = 0.0;
         double targetDecPosn = 0.0;
 
-
         double altPosnCmd_rad = 0.0;
         double azPosnCmd_rad = 0.0;
-        
+
         double azRateCmd_rps = 0.0;
         double altRateCmd_rps = 0.0;
 
@@ -69,6 +71,7 @@ class MountControl
 
         MountStatus mountStatus;
 
+        volatile DriveControl AzDriveControl;
     public:
         MountControl();
 
@@ -110,7 +113,6 @@ class MountControl
             return mountStatus == MOUNT_TRACKING;
         }
 
-
         void findHome();
         void park();
         void unpark();
@@ -120,7 +122,8 @@ class MountControl
         void updatePosnErrors();
         void syncRaDec(double ra, double dec);
         void raDecToAltAz(double ra, double dec, double *alt, double *az);
-        // void getTargetAltAz(double *alt, double *az);
+        void getTrackingRates(double *dAlt, double *dAz);
+        double getParallacticAngle();
         // void setTargetAltAz(double alt, double az);
         void abortSlew();
 
@@ -138,7 +141,6 @@ class MountControl
         // }
         double getTrackRate();
 
-
         enum AXIS
         {
             ALT_AXIS = 0,
@@ -146,6 +148,6 @@ class MountControl
             RA_AXIS = 2,
             DEC_AXIS = 3
         };
-};
+    };
 
 }
