@@ -17,7 +17,7 @@
 #include <NetComms.h>
 #include <cmath>
 
-#include "Telescope.h"
+#include <MountControl.h>
 
 // void updateAltAzGotoCommand(uint8_t axis, double val);
 void updateRaDecGotoCommand(uint8_t axis, double val);
@@ -69,13 +69,8 @@ void deviceSetup()
 void setup(void)
 {
     deviceSetup();
-    CLEAR_CONSOLE();
-    CURSOR_TO_ZEROZERO();
-    TEST_SERIAL.printf("################################################################################################\r\n");
-    TEST_SERIAL.printf("###################################### LFAST MOUNT CONTROL #####################################\r\n");
-    TEST_SERIAL.printf("################################################################################################\r\n");
+
     commsService = new LFAST::EthernetCommsService();
-    mountControl = new LFAST::MountControl();
 
     if (!commsService->Status())
     {
@@ -86,6 +81,8 @@ void setup(void)
             ;
         }
     }
+    
+    mountControl = new LFAST::MountControl();
 
     commsService->registerMessageHandler<unsigned int>("Handshake", handshake);
     commsService->registerMessageHandler<double>("time", updateTime);
@@ -106,24 +103,13 @@ void setup(void)
     commsService->registerMessageHandler<double>("syncRaPosn", syncRaPosition);
     commsService->registerMessageHandler<double>("syncDecPosn", syncDecPosition);
 
-
     commsService->registerMessageHandler<double>("FindHome", findHome);
 
     delay(500);
 
     initHeartbeat();
     resetHeartbeat();
-    uint8_t modePinState = digitalRead(MODE_PIN);
-    if (modePinState == HIGH)
-    {
-        setHeartBeatPeriod(100000);
-        // TEST_SERIAL.println("CAN Test Mode: Talker. ");
-    }
-    else
-    {
-        setHeartBeatPeriod(400000);
-        // TEST_SERIAL.println("CAN Test Mode: Listener. ");
-    }
+    setHeartBeatPeriod(400000);
 }
 
 void loop(void)
@@ -132,6 +118,7 @@ void loop(void)
     commsService->checkForNewClientData();
     commsService->processClientData();
     commsService->stopDisconnectedClients();
+    mountControl->serviceCLI();
 }
 
 void handshake(unsigned int val)
@@ -167,8 +154,8 @@ void updateLatitude(double lat)
 #if SIM_SCOPE_ENABLED
 #endif
     mountControl->setLatitude(lat);
-    TEST_SERIAL.printf("\033[%u;%uH", 7, 0);
-    TEST_SERIAL.printf("Latitude:\t%8.4f", lat);
+    // TEST_SERIAL.printf("\033[%u;%uH", 7, 0);
+    // TEST_SERIAL.printf("Latitude:\t%8.4f", lat);
 }
 
 void updateLongitude(double lon)
@@ -176,8 +163,8 @@ void updateLongitude(double lon)
 #if SIM_SCOPE_ENABLED
 #endif
     mountControl->setLongitude(lon);
-    TEST_SERIAL.printf("\033[%u;%uH", 8, 0);
-    TEST_SERIAL.printf("Longitude:\t%8.4f", lon);
+    // TEST_SERIAL.printf("\033[%u;%uH", 8, 0);
+    // TEST_SERIAL.printf("Longitude:\t%8.4f", lon);
 }
 
 void sendRaDec(double lst)
@@ -193,7 +180,7 @@ void sendRaDec(double lst)
     newMsg.addKeyValuePair<double>("RA", ra);
     newMsg.addKeyValuePair<double>("DEC", dec);
     commsService->sendMessage(newMsg, LFAST::CommsService::ACTIVE_CONNECTION);
-    mountControl->printMountStatus();
+    // mountControl->printMountStatus();
 }
 
 void sendParkedStatus(double lst)
@@ -312,7 +299,6 @@ void findHome(double lst)
     newMsg.addKeyValuePair<std::string>("FindHome", "$OK^");
     commsService->sendMessage(newMsg, LFAST::CommsService::ACTIVE_CONNECTION);
 }
-
 
 void updateRaDecGotoCommand(uint8_t axis, double val)
 {

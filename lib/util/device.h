@@ -73,7 +73,3 @@
 
 #define TOGGLE_LED_PIN() digitalWrite(LED_PIN, !digitalRead(LED_PIN));
 
-#define  CURSOR_TO_ZEROZERO()   TEST_SERIAL.printf("\033[%u;%uH\033[37m", 0, 0)
-#define  CLEAR_CONSOLE() TEST_SERIAL.printf("\033[2J")
-
-#define  CURSOR_TO_DEBUG_ROW(n)   TEST_SERIAL.printf("\033[%u;%uH\033[37m", 24+n, 0)

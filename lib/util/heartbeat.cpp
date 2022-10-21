@@ -26,7 +26,7 @@ uint32_t heartbeatPeriodCnts = 1000;
 
 void resetHeartbeat();
 ledState toggleHeartbeatState(ledState hbState);
-void toggleHeartbeatState();
+// void toggleHeartbeatState();
 void setHeartbeatStateOff();
 void setHeartbeatStateOn();
 void updateLedPin();
