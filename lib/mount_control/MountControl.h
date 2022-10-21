@@ -174,7 +174,7 @@ namespace LFAST
         void getTrackingRates(double *dAlt, double *dAz);
         double getParallacticAngle();
         // void setTargetAltAz(double alt, double az);
-        void serviceCLI(){cli.serviceCLI();}
+        void serviceCLI(){cli.updateStatusFields(*this); cli.serviceCLI();}
         void abortSlew();
 
         void getCurrentRaDec(double *ra, double *dec);

@@ -39,12 +39,13 @@ void LFAST::MountControl_CLI::printMountStatusLabels()
     TEST_SERIAL.println();
 
     CURSOR_TO_ROW_COL(MOUNT_STATUS, fieldStartCol);
-    TEST_SERIAL.printf("Waiting to connect. ");
+    // TEST_SERIAL.printf("Waiting for connection to INDI Server. ");
     this->resetPrompt();
 }
 
 void LFAST::MountControl_CLI::updateStatusFields(MountControl &mc)
 {
+    HIDE_CURSOR();
     // Print the mount status field:
     CURSOR_TO_ROW_COL(MOUNT_STATUS, fieldStartCol);
     switch (mc.mountStatus)
@@ -106,6 +107,7 @@ void LFAST::MountControl_CLI::updateStatusFields(MountControl &mc)
 
 void LFAST::MountControl_CLI::resetPrompt()
 {
+    SHOW_CURSOR();
     std::memset(rxBuff, '\0', CLI_BUFF_LENGTH);
     rxPtr = rxBuff;
     CURSOR_TO_ROW(PROMPT);
@@ -145,6 +147,7 @@ void LFAST::MountControl_CLI::serviceCLI()
 void LFAST::MountControl_CLI::handleCliCommand()
 {
     CURSOR_TO_ROW(PROMPT_FEEDBACK);
+    CLEAR_TO_END_OF_ROW();
     TEST_SERIAL.printf("%s: Command Not Found.\r\n", rxBuff);
 
     // for (int ii = 0; ii < 4; ii++)

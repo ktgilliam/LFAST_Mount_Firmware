@@ -307,6 +307,4 @@ void LFAST::MountControl::updateSimMount()
         currentAzPosn -= (2 * M_PI);
     else if (currentAzPosn < 0)
         currentAzPosn += (2 * M_PI);
-
-    cli.updateStatusFields(*this);
 }

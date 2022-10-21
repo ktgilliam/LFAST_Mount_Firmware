@@ -71,7 +71,6 @@ void setup(void)
     deviceSetup();
 
     commsService = new LFAST::EthernetCommsService();
-    mountControl = new LFAST::MountControl();
 
     if (!commsService->Status())
     {
@@ -82,6 +81,8 @@ void setup(void)
             ;
         }
     }
+    
+    mountControl = new LFAST::MountControl();
 
     commsService->registerMessageHandler<unsigned int>("Handshake", handshake);
     commsService->registerMessageHandler<double>("time", updateTime);

@@ -21,3 +21,5 @@
 
 #define BLINKING() TEST_SERIAL.printf("\033[5m");
 #define NOT_BLINKING() TEST_SERIAL.printf("\033[25m");
+#define HIDE_CURSOR() TEST_SERIAL.printf("\033[?25l");
+#define SHOW_CURSOR() TEST_SERIAL.printf("\033[?25h");
