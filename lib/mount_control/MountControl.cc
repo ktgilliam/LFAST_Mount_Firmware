@@ -165,11 +165,11 @@ double LFAST::MountControl::getTrackRate()
 
 void LFAST::MountControl::abortSlew()
 {
+    altPosnCmd_rad = currentAltPosn;
+    azPosnCmd_rad = currentAzPosn;
+    azRateCmd_rps = 0.0;
+    altRateCmd_rps = 0.0;
     mountStatus = MOUNT_IDLE;
-#if SIM_SCOPE_ENABLED
-#else
-#warning ABORT (ALT) NOT IMPLEMENTED
-#endif
 }
 
 void LFAST::MountControl::getCurrentRaDec(double *ra, double *dec)
