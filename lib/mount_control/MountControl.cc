@@ -97,13 +97,20 @@ void LFAST::MountControl::updatePosnErrors()
     }
 }
 
+#define USE_DUMB_VERSION 1
 void LFAST::MountControl::getTrackingRates(double *dAlt, double *dAz)
 {
+// NOTE: THIS IS WRONG!!!
+#if USE_DUMB_VERSION
+    *dAlt = SIDEREAL_RATE_RPS * sign(AltPosnErr);
+    *dAz = SIDEREAL_RATE_RPS * sign(AzPosnErr);
+#else
+
+#endif
     // https://safe.nrao.edu/wiki/pub/Main/RadioTutorial/AzEltoSidereal.pdf
     // double ha_rad = ha2rad(localSiderealTime - targetRaPosn);
-
-    // double d = deg2rad(targetDecPosn); // Target declination
-    // double q = getParallacticAngle();
+    *dAlt = SIDEREAL_RATE_RPS * sin(altPosnCmd_rad) + cos(deg2rad(localLatitude))*sin(azPosnCmd_rad);
+    *dAz = SIDEREAL_RATE_RPS * cos(targetDecPosn)*tan(altPosnCmd_rad);
 }
 
 double LFAST::MountControl::getParallacticAngle()
@@ -272,9 +279,8 @@ void LFAST::MountControl::updateTargetCommands()
         this->raDecToAltAz(this->targetRaPosn, this->targetDecPosn, &altPosnCmd_rad, &azPosnCmd_rad);
         updatePosnErrors();
 #if SIM_SCOPE_ENABLED
-        // NOTE: THIS IS WRONG!!!
-        altRateCmd_rps = SIDEREAL_RATE_RPS * sign(AltPosnErr);
-        azRateCmd_rps = SIDEREAL_RATE_RPS * sign(AzPosnErr);
+
+        getTrackingRates(&altRateCmd_rps, &azRateCmd_rps);
 #endif
         break;
     }
