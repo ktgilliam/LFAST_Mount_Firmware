@@ -141,6 +141,12 @@ void LFAST::MountControl_CLI::resetPrompt()
 
 void LFAST::MountControl_CLI::serviceCLI()
 {
+#if PRINT_SERVICE_COUNTER
+    static uint64_t serviceCounter = 0;
+    CURSOR_TO_ROW_COL(SERVICE_COUNTER_ROW, 0);
+    TEST_SERIAL.printf("[%o]", serviceCounter++);
+#endif
+
     CURSOR_TO_ROW_COL(PROMPT, currentInputCol);
     if (TEST_SERIAL.available() > 0)
     {
@@ -171,33 +177,27 @@ void LFAST::MountControl_CLI::handleCliCommand()
     CLEAR_TO_END_OF_ROW();
     TEST_SERIAL.printf("%s: Command Not Found.\r\n", rxBuff);
 
-    // for (int ii = 0; ii < 4; ii++)
-    // {
-    //     TEST_SERIAL.printf("%c ", rxBuff[ii]);
-    //     TEST_SERIAL.print(rxBuff[ii], HEX);
-    //     TEST_SERIAL.println();
-    // }
     resetPrompt();
 }
 
-void LFAST::MountControl_CLI::addDebugMessage(std::string &msg,  uint8_t level)
+void LFAST::MountControl_CLI::addDebugMessage(std::string msg, uint8_t level)
 {
     debugMessageCount++;
     std::string colorStr;
-    switch(level)
+    switch (level)
     {
-        case INFO:
-            colorStr = GREEN;
-            break;
-        case DEBUG:
-            colorStr = CYAN;
-            break;
-        case WARNING:
-            colorStr = YELLOW;
-            break;
-        case ERROR:
-            colorStr = RED;
-            break;
+    case INFO:
+        colorStr = GREEN;
+        break;
+    case DEBUG:
+        colorStr = CYAN;
+        break;
+    case WARNING:
+        colorStr = YELLOW;
+        break;
+    case ERROR:
+        colorStr = RED;
+        break;
     }
     std::stringstream ss;
     ss << std::setiosflags(std::ios::left) << std::setw(6);

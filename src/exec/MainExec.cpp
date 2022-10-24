@@ -19,6 +19,10 @@
 
 #include <MountControl.h>
 
+
+#define DEFAULT_MOUNT_UPDATE_PRD 150000 // Microseconds
+
+
 // void updateAltAzGotoCommand(uint8_t axis, double val);
 void updateRaDecGotoCommand(uint8_t axis, double val);
 void updateSyncCommand(uint8_t axis, double val);
@@ -110,6 +114,7 @@ void setup(void)
     setHeartBeatPeriod(400000);
 
     LFAST::MountControl &mountControl = LFAST::MountControl::getMountController();
+    mountControl.setUpdatePeriod(DEFAULT_MOUNT_UPDATE_PRD);
     std::string msg = "Initialization complete";
     mountControl.cli.addDebugMessage(msg);
 }
@@ -185,11 +190,16 @@ void sendRaDec(double lst)
 void sendParkedStatus(double lst)
 {
     LFAST::MountControl &mountControl = LFAST::MountControl::getMountController();
+    bool isParked =  mountControl.mountIsParked();
+    if(isParked)
+    mountControl.cli.addDebugMessage("Park Status Requested (1).");
+    else
+        mountControl.cli.addDebugMessage("Park Status Requested (0).");
 #if SIM_SCOPE_ENABLED
     mountControl.updateClock(lst);
 #endif
     LFAST::CommsMessage newMsg;
-    newMsg.addKeyValuePair<bool>("IsParked", mountControl.mountIsParked());
+    newMsg.addKeyValuePair<bool>("IsParked",isParked);
     commsService->sendMessage(newMsg, LFAST::CommsService::ACTIVE_CONNECTION);
 }
 
@@ -208,7 +218,6 @@ void parkScope(double lst)
 {
     LFAST::MountControl &mountControl = LFAST::MountControl::getMountController();
     mountControl.park();
-
 #if SIM_SCOPE_ENABLED
     mountControl.updateClock(lst);
 #endif
@@ -222,8 +231,6 @@ void unparkScope(double lst)
 {
     LFAST::MountControl &mountControl = LFAST::MountControl::getMountController();
     mountControl.unpark();
-    std::string msg = "GOT UNPARK CMD###";
-    mountControl.cli.addDebugMessage(msg);
 #if SIM_SCOPE_ENABLED
     mountControl.updateClock(lst);
 #endif

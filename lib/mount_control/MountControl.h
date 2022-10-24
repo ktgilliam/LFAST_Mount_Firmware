@@ -8,7 +8,7 @@
 #include <deque>
 // #include <vector>
 
-#define DEFAULT_UPDATE_PRD 150000 // Microseconds
+
 
 #define SIM_SCOPE_ENABLED 1
 #define SLEW_MULT 512
@@ -30,9 +30,9 @@
 
 #define CLI_BUFF_LENGTH 90
 
-#define DEFAULT_UPDATE_PRD_US 100000
+#define DEFAULT_SERVO_PRD 5000
 
-#define MAX_DEBUG_ROWS 10
+#define MAX_DEBUG_ROWS 20
 #define TERMINAL_WIDTH 95
 namespace LFAST
 {
@@ -65,7 +65,7 @@ namespace LFAST
             EMPTY_6,
             PROMPT,
             PROMPT_FEEDBACK,
-            EMPTY_7,
+            SERVICE_COUNTER_ROW,
             DEBUG_BORDER_1,
             DEBUG_MESSAGE_ROW
         };
@@ -90,14 +90,14 @@ namespace LFAST
         void printMountStatusLabels();
         void serviceCLI();
         // void addDebugMessage(std::string&, uint8_t);
-        void addDebugMessage(std::string& msg, uint8_t level = INFO);
+        void addDebugMessage(std::string msg, uint8_t level = INFO);
         // void clearDebugMessages();
     };
 
     class MountControl
     {
     private:
-        MountControl(uint32_t);
+        MountControl();
         // static MountControl *mcInstance;
         uint32_t updatePrdUs;
         double localSiderealTime = 0.0;
@@ -167,19 +167,10 @@ namespace LFAST
         MountStatus mountSlewingHandler();
         MountStatus mountHomingHandler();
         MountStatus mountTrackingHandler();
-
+        bool readyFlag;
     public:
     
-        static MountControl& getMountController()
-        {
-            return getMountController(DEFAULT_UPDATE_PRD);
-        }
-
-        static MountControl& getMountController(uint32_t prd)
-        {
-            static MountControl instance(prd);
-            return instance;
-        }
+        static MountControl& getMountController();
 
         MountControl(MountControl const&) = delete;
         void operator=(MountControl const&) = delete;
@@ -192,6 +183,8 @@ namespace LFAST
         void initSimMount();
         void updateSimMount();
 #endif
+        void setUpdatePeriod(uint32_t prd);
+
         void setLatitude(double lat)
         {
             localLatitude = lat;
@@ -225,6 +218,7 @@ namespace LFAST
             return mountStatus == MOUNT_TRACKING;
         }
 
+        
         friend void updateMountControl_ISR();
         void findHome();
         void park();

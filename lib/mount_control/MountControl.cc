@@ -10,18 +10,32 @@
 #include <device.h>
 #include <debug.h>
 
-LFAST::MountControl::MountControl(uint32_t prd)
-    : updatePrdUs(prd), AltDriveControl("ALT"), AzDriveControl("AZ")
+LFAST::MountControl::MountControl()
+    : AltDriveControl("ALT"), AzDriveControl("AZ")
 {
 #if SIM_SCOPE_ENABLED
     initSimMount();
 #endif
-    DriveControl::configureLoopTimer(DEFAULT_UPDATE_PRD);
+    DriveControl::configureLoopTimer(DEFAULT_SERVO_PRD);
     DriveControl::startLoopTimer();
     initializeCLI();
 
+    readyFlag = false;
+}
+
+LFAST::MountControl &LFAST::MountControl::getMountController()
+{
+    static MountControl instance;
+    return instance;
+}
+
+void LFAST::MountControl::setUpdatePeriod(uint32_t prd)
+{
+    updatePrdUs = prd;
+    Timer3.stop();
     Timer3.initialize(updatePrdUs);
     Timer3.attachInterrupt(LFAST::updateMountControl_ISR);
+    Timer3.start();
 }
 
 void LFAST::MountControl::updateClock(double lst)
@@ -70,6 +84,8 @@ void LFAST::MountControl::findHome()
 
 void LFAST::MountControl::park()
 {
+    std::string msg = "Received park Command.";
+    cli.addDebugMessage(msg);
     mountCmdEvents.push(PARK_COMMAND_RECEIVED);
     // targetAltPosn = altParkPosn;
     // targetAzPosn = azParkPosn;
@@ -81,6 +97,8 @@ void LFAST::MountControl::park()
 
 void LFAST::MountControl::unpark()
 {
+    std::string msg = "Received unpark Command.";
+    cli.addDebugMessage(msg);
     mountCmdEvents.push(UNPARK_COMMAND_RECEIVED);
 }
 
@@ -173,6 +191,8 @@ double LFAST::MountControl::getTrackRate()
 
 void LFAST::MountControl::abortSlew()
 {
+    std::string msg = "Received abort Command.";
+    cli.addDebugMessage(msg, MountControl_CLI::WARNING);
     altPosnCmd_rad = currentAltPosn;
     azPosnCmd_rad = currentAzPosn;
     azRateCmd_rps = 0.0;
@@ -295,9 +315,15 @@ LFAST::MountControl::mountIdleHandler()
 LFAST::MountControl::MountStatus
 LFAST::MountControl::mountParkingHandler()
 {
+    MountCommandEvent cmdEvent = readEvent();
+    if (cmdEvent == ABORT_COMMAND_RECEIVED)
+        return MOUNT_IDLE;
+
     altPosnCmd_rad = altParkPosn;
     azPosnCmd_rad = azParkPosn;
+
     updatePosnErrors();
+
     if (AltPosnErr == 0.0 && AzPosnErr == 0.0)
     {
         return MOUNT_PARKED;
@@ -315,12 +341,20 @@ LFAST::MountControl::mountParkedHandler()
 {
     altRateCmd_rps = 0.0;
     azRateCmd_rps = 0.0;
-    return MOUNT_PARKED;
+    MountCommandEvent cmdEvent = readEvent();
+    if (cmdEvent == UNPARK_COMMAND_RECEIVED)
+        return MOUNT_IDLE;
+    else
+        return MOUNT_PARKED;
 }
 
 LFAST::MountControl::MountStatus
 LFAST::MountControl::mountHomingHandler()
 {
+    MountCommandEvent cmdEvent = readEvent();
+    if (cmdEvent == ABORT_COMMAND_RECEIVED)
+        return MOUNT_IDLE;
+
     altPosnCmd_rad = 0.0;
     azPosnCmd_rad = 0.0;
     updatePosnErrors();
@@ -341,6 +375,9 @@ LFAST::MountControl::mountHomingHandler()
 LFAST::MountControl::MountStatus
 LFAST::MountControl::mountSlewingHandler()
 {
+    MountCommandEvent cmdEvent = readEvent();
+    if (cmdEvent == ABORT_COMMAND_RECEIVED)
+        return MOUNT_IDLE;
     raDecToAltAz(targetRaPosn, targetDecPosn, &altPosnCmd_rad, &azPosnCmd_rad);
     updatePosnErrors();
     if (std::abs(AltPosnErr) < TRACK_ERR_THRESH && std::abs(AzPosnErr) < TRACK_ERR_THRESH)
@@ -359,6 +396,9 @@ LFAST::MountControl::mountSlewingHandler()
 LFAST::MountControl::MountStatus
 LFAST::MountControl::mountTrackingHandler()
 {
+    MountCommandEvent cmdEvent = readEvent();
+    if (cmdEvent == ABORT_COMMAND_RECEIVED)
+        return MOUNT_IDLE;
     raDecToAltAz(targetRaPosn, targetDecPosn, &altPosnCmd_rad, &azPosnCmd_rad);
     updatePosnErrors();
     getTrackingRateCommands(&altRateCmd_rps, &azRateCmd_rps);
