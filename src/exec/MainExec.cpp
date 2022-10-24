@@ -44,7 +44,7 @@ void syncDecPosition(double currentDecPosn);
 void findHome(double lst);
 
 LFAST::EthernetCommsService *commsService;
-LFAST::MountControl *mountControl;
+LFAST::MountControl *mountControlPtr;
 
 /**
  * @brief configure pins and test interfaces
@@ -81,8 +81,6 @@ void setup(void)
             ;
         }
     }
-    
-    mountControl = new LFAST::MountControl();
 
     commsService->registerMessageHandler<unsigned int>("Handshake", handshake);
     commsService->registerMessageHandler<double>("time", updateTime);
@@ -110,6 +108,10 @@ void setup(void)
     initHeartbeat();
     resetHeartbeat();
     setHeartBeatPeriod(400000);
+
+    LFAST::MountControl &mountControl = LFAST::MountControl::getMountController();
+    std::string msg = "Initialization complete";
+    mountControl.cli.addDebugMessage(msg);
 }
 
 void loop(void)
@@ -118,7 +120,10 @@ void loop(void)
     commsService->checkForNewClientData();
     commsService->processClientData();
     commsService->stopDisconnectedClients();
-    mountControl->serviceCLI();
+
+    LFAST::MountControl &mountControl = LFAST::MountControl::getMountController();
+    mountControl.serviceCLI();
+    // mountControl.cli.printDebugMessages();
 }
 
 void handshake(unsigned int val)
@@ -128,6 +133,9 @@ void handshake(unsigned int val)
     {
         newMsg.addKeyValuePair<unsigned int>("Handshake", 0xBEEF);
         commsService->sendMessage(newMsg, LFAST::CommsService::ACTIVE_CONNECTION);
+        LFAST::MountControl &mountControl = LFAST::MountControl::getMountController();
+        std::string msg = "Connected to client.";
+        mountControl.cli.addDebugMessage(msg);
     }
     else
     {
@@ -143,75 +151,66 @@ void setNoReply(bool flag)
 
 void updateTime(double lst)
 {
-    mountControl->updateClock(lst);
-#if SIM_SCOPE_ENABLED
-    mountControl->updateSimMount();
-#endif
+    LFAST::MountControl &mountControl = LFAST::MountControl::getMountController();
+    mountControl.updateClock(lst);
 }
 
 void updateLatitude(double lat)
 {
-#if SIM_SCOPE_ENABLED
-#endif
-    mountControl->setLatitude(lat);
-    // TEST_SERIAL.printf("\033[%u;%uH", 7, 0);
-    // TEST_SERIAL.printf("Latitude:\t%8.4f", lat);
+    LFAST::MountControl &mountControl = LFAST::MountControl::getMountController();
+    mountControl.setLatitude(lat);
 }
 
 void updateLongitude(double lon)
 {
-#if SIM_SCOPE_ENABLED
-#endif
-    mountControl->setLongitude(lon);
-    // TEST_SERIAL.printf("\033[%u;%uH", 8, 0);
-    // TEST_SERIAL.printf("Longitude:\t%8.4f", lon);
+    LFAST::MountControl &mountControl = LFAST::MountControl::getMountController();
+    mountControl.setLongitude(lon);
 }
 
 void sendRaDec(double lst)
 {
     LFAST::CommsMessage newMsg;
+    LFAST::MountControl &mountControl = LFAST::MountControl::getMountController();
 #if SIM_SCOPE_ENABLED
-    mountControl->updateClock(lst);
-    mountControl->updateSimMount();
+    mountControl.updateClock(lst);
 #endif
 
     double ra = 0.0, dec = 0.0;
-    mountControl->getCurrentRaDec(&ra, &dec);
+    mountControl.getCurrentRaDec(&ra, &dec);
     newMsg.addKeyValuePair<double>("RA", ra);
     newMsg.addKeyValuePair<double>("DEC", dec);
     commsService->sendMessage(newMsg, LFAST::CommsService::ACTIVE_CONNECTION);
-    // mountControl->printMountStatus();
 }
 
 void sendParkedStatus(double lst)
 {
+    LFAST::MountControl &mountControl = LFAST::MountControl::getMountController();
 #if SIM_SCOPE_ENABLED
-    mountControl->updateClock(lst);
-    // mountControl->updateSimMount();
+    mountControl.updateClock(lst);
 #endif
     LFAST::CommsMessage newMsg;
-    newMsg.addKeyValuePair<bool>("IsParked", mountControl->mountIsParked());
+    newMsg.addKeyValuePair<bool>("IsParked", mountControl.mountIsParked());
     commsService->sendMessage(newMsg, LFAST::CommsService::ACTIVE_CONNECTION);
 }
 
 void sendTrackStatus(double lst)
 {
+    LFAST::MountControl &mountControl = LFAST::MountControl::getMountController();
 #if SIM_SCOPE_ENABLED
-    mountControl->updateClock(lst);
-    mountControl->updateSimMount();
+    mountControl.updateClock(lst);
 #endif
     LFAST::CommsMessage newMsg;
-    newMsg.addKeyValuePair<bool>("IsTracking", mountControl->mountIsTracking());
+    newMsg.addKeyValuePair<bool>("IsTracking", mountControl.mountIsTracking());
     commsService->sendMessage(newMsg, LFAST::CommsService::ACTIVE_CONNECTION);
 }
 
 void parkScope(double lst)
 {
-    mountControl->park();
+    LFAST::MountControl &mountControl = LFAST::MountControl::getMountController();
+    mountControl.park();
 
 #if SIM_SCOPE_ENABLED
-    mountControl->updateClock(lst);
-    mountControl->updateSimMount();
+    mountControl.updateClock(lst);
 #endif
 
     LFAST::CommsMessage newMsg;
@@ -221,11 +220,12 @@ void parkScope(double lst)
 
 void unparkScope(double lst)
 {
-    mountControl->unpark();
-
+    LFAST::MountControl &mountControl = LFAST::MountControl::getMountController();
+    mountControl.unpark();
+    std::string msg = "GOT UNPARK CMD###";
+    mountControl.cli.addDebugMessage(msg);
 #if SIM_SCOPE_ENABLED
-    mountControl->updateClock(lst);
-    mountControl->updateSimMount();
+    mountControl.updateClock(lst);
 #endif
 
     LFAST::CommsMessage newMsg;
@@ -242,7 +242,8 @@ void noDisconnect(bool noDiscoFlag)
 
 void abortSlew(double lst)
 {
-    mountControl->abortSlew();
+    LFAST::MountControl &mountControl = LFAST::MountControl::getMountController();
+    mountControl.abortSlew();
     LFAST::CommsMessage newMsg;
     newMsg.addKeyValuePair<std::string>("AbortSlew", "$OK^");
     commsService->sendMessage(newMsg, LFAST::CommsService::ACTIVE_CONNECTION);
@@ -250,12 +251,12 @@ void abortSlew(double lst)
 
 void sendSlewCompleteStatus(double lst)
 {
+    LFAST::MountControl &mountControl = LFAST::MountControl::getMountController();
 #if SIM_SCOPE_ENABLED
-    mountControl->updateClock(lst);
-    mountControl->updateSimMount();
+    mountControl.updateClock(lst);
 #endif
     LFAST::CommsMessage newMsg;
-    newMsg.addKeyValuePair<bool>("IsSlewComplete", mountControl->mountIsIdle());
+    newMsg.addKeyValuePair<bool>("IsSlewComplete", mountControl.mountIsIdle());
     commsService->sendMessage(newMsg, LFAST::CommsService::ACTIVE_CONNECTION);
 }
 
@@ -290,9 +291,9 @@ void syncDecPosition(double currentDecPosn)
 
 void findHome(double lst)
 {
-    mountControl->findHome();
+    LFAST::MountControl &mountControl = LFAST::MountControl::getMountController();
+    mountControl.findHome();
 #if SIM_SCOPE_ENABLED
-    mountControl->updateSimMount();
 #endif
 
     LFAST::CommsMessage newMsg;
@@ -306,7 +307,7 @@ void updateRaDecGotoCommand(uint8_t axis, double val)
     static bool decUpdated = false;
     static double raVal = 0.0;
     static double decVal = 0.0;
-
+    LFAST::MountControl &mountControl = LFAST::MountControl::getMountController();
     if (axis == LFAST::MountControl::RA_AXIS)
     {
         raVal = val;
@@ -328,7 +329,7 @@ void updateRaDecGotoCommand(uint8_t axis, double val)
         commsService->sendMessage(newMsg, LFAST::CommsService::ACTIVE_CONNECTION);
         raUpdated = false;
         decUpdated = false;
-        mountControl->updateTargetRaDec(raVal, decVal);
+        mountControl.updateTargetRaDec(raVal, decVal);
     }
 }
 
@@ -338,7 +339,7 @@ void updateSyncCommand(uint8_t axis, double val)
     static bool decUpdated = false;
     static double raVal = 0.0;
     static double decVal = 0.0;
-
+    LFAST::MountControl &mountControl = LFAST::MountControl::getMountController();
     if (axis == LFAST::MountControl::RA_AXIS)
     {
         raVal = val;
@@ -358,6 +359,6 @@ void updateSyncCommand(uint8_t axis, double val)
         commsService->sendMessage(newMsg, LFAST::CommsService::ACTIVE_CONNECTION);
         raUpdated = false;
         decUpdated = false;
-        mountControl->syncRaDec(raVal, decVal);
+        mountControl.syncRaDec(raVal, decVal);
     }
 }

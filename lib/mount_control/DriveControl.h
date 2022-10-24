@@ -48,8 +48,8 @@ namespace LFAST
         uint8_t DriveIndex;
 
     private:
-        uint32_t *DriveControlStructA;
-        uint32_t *DriveControlStructB;
+        // uint32_t *DriveControlStructA;
+        // uint32_t *DriveControlStructB;
     };
 
 }

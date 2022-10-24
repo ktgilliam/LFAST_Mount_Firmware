@@ -1,12 +1,21 @@
 
-#include <cinttypes>
 #include <MountControl.h>
 
+#include <iostream>
+#include <string>
+#include <sstream>
+#include <iomanip>
+
+#include <cinttypes>
 #include <mathFuncs.h>
+
+// #include <patch.h>
+#define MOUNT_CONTROL_LABEL " LFAST MOUNT CONTROL "
 
 LFAST::MountControl_CLI::MountControl_CLI()
 {
-
+    debugRowOffset = 0;
+    debugMessageCount = 0;
     this->resetPrompt();
 };
 
@@ -14,10 +23,20 @@ void LFAST::MountControl_CLI::printMountStatusLabels()
 {
     CLEAR_CONSOLE();
     CURSOR_TO_ROW(TOP_HEADER);
-    TEST_SERIAL.printf("################################################################################################\r\n");
-    TEST_SERIAL.printf("###################################### LFAST MOUNT CONTROL #####################################\r\n");
-    TEST_SERIAL.printf("################################################################################################\r\n");
+    TO_WHITE();
 
+    std::string HEADER_BORDER_STRING = std::string(TERMINAL_WIDTH, '#');
+    std::string HEADER_LABEL_STRING = MOUNT_CONTROL_LABEL;
+    std::string HEADER_LABEL_ROW_SIDE = std::string((TERMINAL_WIDTH - HEADER_LABEL_STRING.size()) / 2, '#');
+    std::string HEADER_LABEL_ROW = HEADER_LABEL_ROW_SIDE + HEADER_LABEL_STRING + HEADER_LABEL_ROW_SIDE;
+
+    TEST_SERIAL.printf("%s\r\n", HEADER_BORDER_STRING.c_str());
+    TEST_SERIAL.printf("%s\r\n", HEADER_LABEL_ROW.c_str());
+    TEST_SERIAL.printf("%s\r\n", HEADER_BORDER_STRING.c_str());
+
+    CURSOR_TO_ROW_COL(DEBUG_BORDER_1, 0);
+    std::string DEBUG_BORDER_STR = std::string(TERMINAL_WIDTH, '-');
+    TEST_SERIAL.printf("%s\r\n", DEBUG_BORDER_STR.c_str());
     // TEST_SERIAL.printf("\033[32m");
     // TEST_SERIAL.printf("\033[%u;%uH", 4, 0);
 
@@ -51,30 +70,32 @@ void LFAST::MountControl_CLI::updateStatusFields(MountControl &mc)
     switch (mc.mountStatus)
     {
     case LFAST::MountControl::MOUNT_IDLE:
+        TO_WHITE();
         TEST_SERIAL.print("IDLE");
         break;
     case LFAST::MountControl::MOUNT_PARKING:
-        YELLOW();
+        TO_YELLOW();
         TEST_SERIAL.print("PARKING");
         break;
     case LFAST::MountControl::MOUNT_HOMING:
+        TO_CYAN();
         TEST_SERIAL.print("HOMING");
         break;
     case LFAST::MountControl::MOUNT_SLEWING:
-        MAGENTA();
+        TO_MAGENTA();
         TEST_SERIAL.print("SLEWING");
         break;
     case LFAST::MountControl::MOUNT_PARKED:
-        RED();
+        TO_RED();
         TEST_SERIAL.print("PARKED");
         break;
     case LFAST::MountControl::MOUNT_TRACKING:
-        GREEN();
+        TO_GREEN();
         TEST_SERIAL.print("TRACKING");
         break;
     }
     CLEAR_TO_END_OF_ROW();
-    WHITE();
+    TO_WHITE();
 
     // Print the local sidereal time field:
     CURSOR_TO_ROW_COL(SIDEREAL_TIME, fieldStartCol);
@@ -157,4 +178,50 @@ void LFAST::MountControl_CLI::handleCliCommand()
     //     TEST_SERIAL.println();
     // }
     resetPrompt();
+}
+
+void LFAST::MountControl_CLI::addDebugMessage(std::string &msg,  uint8_t level)
+{
+    debugMessageCount++;
+    std::string colorStr;
+    switch(level)
+    {
+        case INFO:
+            colorStr = GREEN;
+            break;
+        case DEBUG:
+            colorStr = CYAN;
+            break;
+        case WARNING:
+            colorStr = YELLOW;
+            break;
+        case ERROR:
+            colorStr = RED;
+            break;
+    }
+    std::stringstream ss;
+    ss << std::setiosflags(std::ios::left) << std::setw(6);
+    ss << WHITE << debugMessageCount + 1 << ": " << colorStr << msg;
+    std::string msgPrintSr = ss.str();
+
+    // TEST_SERIAL.printf("[%d]", debugMessageCount);
+
+    if (debugMessages.size() < MAX_DEBUG_ROWS)
+    {
+        CURSOR_TO_ROW_COL((DEBUG_MESSAGE_ROW + debugRowOffset++), 0);
+        CLEAR_TO_END_OF_ROW();
+        debugMessages.push_back(msgPrintSr);
+        TEST_SERIAL.println(msgPrintSr.c_str());
+    }
+    else
+    {
+        debugMessages.pop_front();
+        debugMessages.push_back(msgPrintSr);
+        for (uint16_t ii = 0; ii < MAX_DEBUG_ROWS; ii++)
+        {
+            CURSOR_TO_ROW_COL((DEBUG_MESSAGE_ROW + ii), 0);
+            CLEAR_TO_END_OF_ROW();
+            TEST_SERIAL.println(debugMessages.at(ii).c_str());
+        }
+    }
 }
