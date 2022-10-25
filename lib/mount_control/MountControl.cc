@@ -103,7 +103,6 @@ void LFAST::MountControl::unpark()
     mountCmdEvents.push(UNPARK_COMMAND_RECEIVED);
 }
 
-#define PRINT_POSITION_ERRORS 0
 void LFAST::MountControl::getPosnErrors(double *altErr, double *azErr)
 {
     double altError = altPosnCmd_rad - currentAltPosn;
@@ -114,22 +113,15 @@ void LFAST::MountControl::getPosnErrors(double *altErr, double *azErr)
 
     *altErr = altError;
     *azErr = azError;
-
-#if PRINT_POSITION_ERRORS
-    std::stringstream ss;
-    ss << std::setprecision(2);
-    ss << "[AltErr: " << *altErr << "] [AzErr: " << *azErr << "]";
-    cli.addDebugMessage(ss.str(), MountControl_CLI::DEBUG);
-#endif
 }
 
 void LFAST::MountControl::getTrackingRateCommands(double *dAlt, double *dAz)
 {
     getPosnErrors(&(this->AltPosnErr), &(this->AzPosnErr));
 
-#if defined(POSITION_LOOP_ONLY)
-    *dAlt = SIDEREAL_RATE_RPS * sign(AltPosnErr);
-    *dAz = SIDEREAL_RATE_RPS * sign(AzPosnErr);
+#if defined(POSITION_CONTROL_ONLY)
+    *dAlt = TRACK_RATE_RPS * sign(AltPosnErr);
+    *dAz = TRACK_RATE_RPS * sign(AzPosnErr);
 #else
     // NOTE: THIS IS WRONG!!!
     // https://safe.nrao.edu/wiki/pub/Main/RadioTutorial/AzEltoSidereal.pdf
@@ -160,9 +152,9 @@ double LFAST::MountControl::getAxisSlewRateCommand(double axErr)
     if (std::abs(axErr) <= TRACK_ERR_THRESH)
         axisRateCmd = 0.0;
     else if ((std::abs(axErr) > TRACK_ERR_THRESH) && (std::abs(axErr) < FAST_SLEW_THRESH))
-        axisRateCmd = END_SLEW_RATE * sign(axErr);
+        axisRateCmd = END_SLEW_RATE_RPS * sign(axErr);
     else
-        axisRateCmd = MAX_SLEW_RATE * sign(axErr);
+        axisRateCmd = MAX_SLEW_RATE_RPS * sign(axErr);
     return axisRateCmd;
 }
 
@@ -330,7 +322,10 @@ LFAST::MountControl::mountIdleHandler()
         break;
     case GOTO_COMMAND_RECEIVED:
         if (mountStatus == MOUNT_PARKED)
+        {
+            cli.addDebugMessage("Received Goto command while parked.", MountControl_CLI::WARNING);
             nextStatus = mountStatus;
+        }
         else
             nextStatus = MOUNT_SLEWING;
         break;
@@ -414,11 +409,13 @@ LFAST::MountControl::mountSlewingHandler()
     if (slewComplete)
     {
         cli.addDebugMessage("Slew is complete.", MountControl_CLI::INFO);
+        slewCompleteFlag = true;
         getTrackingRateCommands(&altRateCmd_rps, &azRateCmd_rps);
         return MOUNT_TRACKING;
     }
     else
     {
+        slewCompleteFlag = false;
         return MOUNT_SLEWING;
     }
 }
@@ -431,6 +428,9 @@ LFAST::MountControl::mountTrackingHandler()
         return MOUNT_IDLE;
     else if (cmdEvent == GOTO_COMMAND_RECEIVED)
         return MOUNT_SLEWING;
+    else if (cmdEvent == PARK_COMMAND_RECEIVED)
+        return MOUNT_PARKING;
+        
     raDecToAltAz(targetRaPosn, targetDecPosn, &altPosnCmd_rad, &azPosnCmd_rad);
     getTrackingRateCommands(&altRateCmd_rps, &azRateCmd_rps);
     // TODO: Add guider offsets

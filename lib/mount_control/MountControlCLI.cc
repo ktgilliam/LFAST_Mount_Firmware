@@ -204,10 +204,10 @@ void LFAST::MountControl_CLI::addDebugMessage(std::string msg, uint8_t level)
     switch (level)
     {
     case INFO:
-        colorStr = GREEN;
+        colorStr = WHITE;
         break;
     case DEBUG:
-        colorStr = CYAN;
+        colorStr = GREEN;
         break;
     case WARNING:
         colorStr = YELLOW;

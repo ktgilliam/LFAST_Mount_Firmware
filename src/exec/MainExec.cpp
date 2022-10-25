@@ -19,9 +19,7 @@
 
 #include <MountControl.h>
 
-
-#define DEFAULT_MOUNT_UPDATE_PRD 50000 // Microseconds
-
+#define DEFAULT_MOUNT_UPDATE_PRD 5000 // Microseconds
 
 // void updateAltAzGotoCommand(uint8_t axis, double val);
 void updateRaDecGotoCommand(uint8_t axis, double val);
@@ -187,22 +185,6 @@ void sendRaDec(double lst)
     commsService->sendMessage(newMsg, LFAST::CommsService::ACTIVE_CONNECTION);
 }
 
-void sendParkedStatus(double lst)
-{
-    LFAST::MountControl &mountControl = LFAST::MountControl::getMountController();
-    bool isParked =  mountControl.mountIsParked();
-    if(isParked)
-    mountControl.cli.addDebugMessage("Park Status Requested (1).");
-    else
-        mountControl.cli.addDebugMessage("Park Status Requested (0).");
-#if SIM_SCOPE_ENABLED
-    mountControl.updateClock(lst);
-#endif
-    LFAST::CommsMessage newMsg;
-    newMsg.addKeyValuePair<bool>("IsParked",isParked);
-    commsService->sendMessage(newMsg, LFAST::CommsService::ACTIVE_CONNECTION);
-}
-
 void sendTrackStatus(double lst)
 {
     LFAST::MountControl &mountControl = LFAST::MountControl::getMountController();
@@ -240,6 +222,22 @@ void unparkScope(double lst)
     commsService->sendMessage(newMsg, LFAST::CommsService::ACTIVE_CONNECTION);
 }
 
+void sendParkedStatus(double lst)
+{
+    LFAST::MountControl &mountControl = LFAST::MountControl::getMountController();
+    bool isParked = mountControl.mountIsParked();
+    // if (isParked)
+    //     mountControl.cli.addDebugMessage("Park Status Requested (1).");
+    // else
+    //     mountControl.cli.addDebugMessage("Park Status Requested (0).");
+#if SIM_SCOPE_ENABLED
+    mountControl.updateClock(lst);
+#endif
+    LFAST::CommsMessage newMsg;
+    newMsg.addKeyValuePair<bool>("IsParked", isParked);
+    commsService->sendMessage(newMsg, LFAST::CommsService::ACTIVE_CONNECTION);
+}
+
 void noDisconnect(bool noDiscoFlag)
 {
     LFAST::CommsMessage newMsg;
@@ -263,7 +261,7 @@ void sendSlewCompleteStatus(double lst)
     mountControl.updateClock(lst);
 #endif
     LFAST::CommsMessage newMsg;
-    newMsg.addKeyValuePair<bool>("IsSlewComplete", mountControl.mountIsIdle());
+    newMsg.addKeyValuePair<bool>("IsSlewComplete", mountControl.mountSlewCompleted());
     commsService->sendMessage(newMsg, LFAST::CommsService::ACTIVE_CONNECTION);
 }
 

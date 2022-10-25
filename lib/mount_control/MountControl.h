@@ -27,14 +27,14 @@
 
 
 
-#define MAX_SLEW_RATE (SIDEREAL_RATE_RPS * SLEW_MULT)
-#define FAST_SLEW_THRESH (1.5 * MAX_SLEW_RATE) 
+#define MAX_SLEW_RATE_RPS (SIDEREAL_RATE_RPS * SLEW_MULT)
+#define FAST_SLEW_THRESH (1.5 * MAX_SLEW_RATE_RPS) 
 
-#define END_SLEW_RATE (0.1 * MAX_SLEW_RATE)
-#define END_SLEW_THRESH (1.5 * END_SLEW_RATE)
+#define END_SLEW_RATE_RPS (0.1 * MAX_SLEW_RATE_RPS)
+#define END_SLEW_THRESH (1.5 * END_SLEW_RATE_RPS)
 
-#define TRACK_RATE SIDEREAL_RATE_RPS
-#define TRACK_ERR_THRESH (1.5 * TRACK_RATE) //(SIDEREAL_RATE_RPS*4.0)
+#define TRACK_RATE_RPS SIDEREAL_RATE_RPS
+#define TRACK_ERR_THRESH (1.5 * TRACK_RATE_RPS) //(SIDEREAL_RATE_RPS*4.0)
 
 #define CLI_BUFF_LENGTH 90
 
@@ -185,6 +185,7 @@ namespace LFAST
         MountStatus mountHomingHandler();
         MountStatus mountTrackingHandler();
         bool readyFlag;
+        bool slewCompleteFlag;
     public:
     
         static MountControl& getMountController();
@@ -234,7 +235,10 @@ namespace LFAST
         {
             return mountStatus == MOUNT_TRACKING;
         }
-
+        bool mountSlewCompleted()
+        {
+            return slewCompleteFlag;
+        }
         
         friend void updateMountControl_ISR();
         void findHome();
