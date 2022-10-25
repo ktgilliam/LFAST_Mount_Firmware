@@ -15,8 +15,7 @@
 
 #if SIM_SCOPE_ENABLED
 #define SIDEREAL_RATE_RPS (0.000072921) //(15.041067 / 3600.0 * M_PI / 180.0)
-#define AZ_SLEW_RATE (SIDEREAL_RATE_RPS * SLEW_MULT)
-#define ALT_SLEW_RATE (SIDEREAL_RATE_RPS * SLEW_MULT)
+
 
 #define SCOPE_PARK_TIME_COUNT 100
 #endif
@@ -26,14 +25,28 @@
 
 #define DEFAULT_ALT_PARK (M_PI / 4.0)
 
-#define TRACK_ERR_THRESH (2 * SIDEREAL_RATE_RPS) //(SIDEREAL_RATE_RPS*4.0)
+
+
+#define MAX_SLEW_RATE (SIDEREAL_RATE_RPS * SLEW_MULT)
+#define FAST_SLEW_THRESH (1.5 * MAX_SLEW_RATE) 
+
+#define END_SLEW_RATE (0.1 * MAX_SLEW_RATE)
+#define END_SLEW_THRESH (1.5 * END_SLEW_RATE)
+
+#define TRACK_RATE SIDEREAL_RATE_RPS
+#define TRACK_ERR_THRESH (1.5 * TRACK_RATE) //(SIDEREAL_RATE_RPS*4.0)
 
 #define CLI_BUFF_LENGTH 90
 
 #define DEFAULT_SERVO_PRD 5000
 
-#define MAX_DEBUG_ROWS 20
+#define MAX_DEBUG_ROWS 10
 #define TERMINAL_WIDTH 95
+#define PRINT_SERVICE_COUNTER 0
+
+#if SIM_SCOPE_ENABLED
+    #define SIM_PROP_GAIN 0.01
+#endif
 namespace LFAST
 {
 
@@ -56,16 +69,20 @@ namespace LFAST
             EMPTY_3,
             CURRENT_ALT,
             TARGET_ALT,
+            ALT_ERR,
             ALT_RATE,
             EMPTY_4,
             CURRENT_AZ,
             TARGET_AZ,
+            AZ_ERR,
             AZ_RATE,
             EMPTY_5,
             EMPTY_6,
             PROMPT,
             PROMPT_FEEDBACK,
+            #if PRINT_SERVICE_COUNTER
             SERVICE_COUNTER_ROW,
+            #endif
             DEBUG_BORDER_1,
             DEBUG_MESSAGE_ROW
         };
@@ -225,10 +242,12 @@ namespace LFAST
         void unpark();
         void updateClock(double);
         void updateTargetRaDec(double ra, double dec);
-        void updatePosnErrors();
+        void getPosnErrors(double *altErr, double *azErr);
         void syncRaDec(double ra, double dec);
         void raDecToAltAz(double ra, double dec, double *alt, double *az);
         void getTrackingRateCommands(double *dAlt, double *dAz);
+        bool getSlewingRateCommands(double *dAlt, double *dAz);
+        static double getAxisSlewRateCommand(double axErr);
         double getParallacticAngle();
         // void setTargetAltAz(double alt, double az);
         void serviceCLI()

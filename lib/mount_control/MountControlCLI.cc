@@ -34,9 +34,6 @@ void LFAST::MountControl_CLI::printMountStatusLabels()
     TEST_SERIAL.printf("%s\r\n", HEADER_LABEL_ROW.c_str());
     TEST_SERIAL.printf("%s\r\n", HEADER_BORDER_STRING.c_str());
 
-    CURSOR_TO_ROW_COL(DEBUG_BORDER_1, 0);
-    std::string DEBUG_BORDER_STR = std::string(TERMINAL_WIDTH, '-');
-    TEST_SERIAL.printf("%s\r\n", DEBUG_BORDER_STR.c_str());
     // TEST_SERIAL.printf("\033[32m");
     // TEST_SERIAL.printf("\033[%u;%uH", 4, 0);
 
@@ -47,18 +44,30 @@ void LFAST::MountControl_CLI::printMountStatusLabels()
     TEST_SERIAL.printf("\033[37mLocal Sidereal Time:\033[22G");
 
     CURSOR_TO_ROW(CURRENT_ALT);
-    TEST_SERIAL.printf("\033[37mCurrent Altitude:\r\n");
-    TEST_SERIAL.printf("\033[37mTarget Altitude:\r\n");
-    TEST_SERIAL.printf("\033[37mAltitude Rate:\r\n");
-    TEST_SERIAL.println();
+    TEST_SERIAL.printf("\033[37mCurrent Altitude:");
+    CURSOR_TO_ROW(TARGET_ALT);
+    TEST_SERIAL.printf("\033[37mTarget Altitude:");
+    CURSOR_TO_ROW(ALT_ERR);
+    TEST_SERIAL.printf("\033[37mAltitude error:");
+    CURSOR_TO_ROW(ALT_RATE);
+    TEST_SERIAL.printf("\033[37mAltitude Rate:");
 
-    TEST_SERIAL.printf("\033[37mCurrent Azimuth:\r\n");
-    TEST_SERIAL.printf("\033[37mTarget Azimuth:\r\n");
-    TEST_SERIAL.printf("\033[37mAzimuth Rate:\r\n");
-    TEST_SERIAL.println();
+    CURSOR_TO_ROW(CURRENT_AZ);
+    TEST_SERIAL.printf("\033[37mCurrent Azimuth:");
+    CURSOR_TO_ROW(TARGET_AZ);
+    TEST_SERIAL.printf("\033[37mTarget Azimuth:");
+    CURSOR_TO_ROW(AZ_ERR);
+    TEST_SERIAL.printf("\033[37mAzimuth error:");
+    CURSOR_TO_ROW(AZ_RATE);
+    TEST_SERIAL.printf("\033[37mAzimuth Rate:");
 
     CURSOR_TO_ROW_COL(MOUNT_STATUS, fieldStartCol);
     // TEST_SERIAL.printf("Waiting for connection to INDI Server. ");
+
+    CURSOR_TO_ROW_COL(DEBUG_BORDER_1, 0);
+    std::string DEBUG_BORDER_STR = std::string(TERMINAL_WIDTH, '-');
+    TEST_SERIAL.printf("%s\r\n", DEBUG_BORDER_STR.c_str());
+
     this->resetPrompt();
 }
 
@@ -109,7 +118,11 @@ void LFAST::MountControl_CLI::updateStatusFields(MountControl &mc)
     CURSOR_TO_ROW_COL(TARGET_ALT, fieldStartCol);
     TEST_SERIAL.printf("%-8.4f", rad2deg(mc.altPosnCmd_rad));
 
-    // Print target altitude:
+    // Print altitude error:
+    CURSOR_TO_ROW_COL(ALT_ERR, fieldStartCol);
+    TEST_SERIAL.printf("%-8.4f", rad2deg(mc.AltPosnErr));
+
+    // Print altitude Rate:
     CURSOR_TO_ROW_COL(ALT_RATE, fieldStartCol);
     TEST_SERIAL.printf("%-8.4f", rad2deg(mc.altRateCmd_rps));
 
@@ -121,7 +134,11 @@ void LFAST::MountControl_CLI::updateStatusFields(MountControl &mc)
     CURSOR_TO_ROW_COL(TARGET_AZ, fieldStartCol);
     TEST_SERIAL.printf("%-8.4f", rad2deg(mc.azPosnCmd_rad));
 
-    // Print target azimuth:
+    // Print azimuth error:
+    CURSOR_TO_ROW_COL(AZ_ERR, fieldStartCol);
+    TEST_SERIAL.printf("%-8.4f", rad2deg(mc.AzPosnErr));
+
+    // Print azimuth rate:
     CURSOR_TO_ROW_COL(AZ_RATE, fieldStartCol);
     TEST_SERIAL.printf("%-8.4f", rad2deg(mc.azRateCmd_rps));
 }

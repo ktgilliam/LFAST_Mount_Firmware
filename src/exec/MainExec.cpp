@@ -20,7 +20,7 @@
 #include <MountControl.h>
 
 
-#define DEFAULT_MOUNT_UPDATE_PRD 150000 // Microseconds
+#define DEFAULT_MOUNT_UPDATE_PRD 50000 // Microseconds
 
 
 // void updateAltAzGotoCommand(uint8_t axis, double val);

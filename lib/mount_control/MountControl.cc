@@ -3,6 +3,7 @@
 
 #include <cmath>
 #include <TimerThree.h>
+#include <iomanip>
 
 #include <DriveControl.h>
 #include <NetComms.h>
@@ -102,34 +103,67 @@ void LFAST::MountControl::unpark()
     mountCmdEvents.push(UNPARK_COMMAND_RECEIVED);
 }
 
-void LFAST::MountControl::updatePosnErrors()
+#define PRINT_POSITION_ERRORS 0
+void LFAST::MountControl::getPosnErrors(double *altErr, double *azErr)
 {
-    AltPosnErr = altPosnCmd_rad - currentAltPosn;
-    AzPosnErr = azPosnCmd_rad - currentAzPosn;
-    while (AzPosnErr > M_PI)
-    {
-        AzPosnErr -= (2 * M_PI);
-    }
-    while (AzPosnErr < (-1 * M_PI))
-    {
-        AzPosnErr += (2 * M_PI);
-    }
+    double altError = altPosnCmd_rad - currentAltPosn;
+    double azError = azPosnCmd_rad - currentAzPosn;
+
+    altError = std::remainder(altError, M_PI);
+    azError = std::remainder(azError, M_PI);
+
+    *altErr = altError;
+    *azErr = azError;
+
+#if PRINT_POSITION_ERRORS
+    std::stringstream ss;
+    ss << std::setprecision(2);
+    ss << "[AltErr: " << *altErr << "] [AzErr: " << *azErr << "]";
+    cli.addDebugMessage(ss.str(), MountControl_CLI::DEBUG);
+#endif
 }
 
-#define USE_DUMB_VERSION 1
 void LFAST::MountControl::getTrackingRateCommands(double *dAlt, double *dAz)
 {
-// NOTE: THIS IS WRONG!!!
-#if USE_DUMB_VERSION
+    getPosnErrors(&(this->AltPosnErr), &(this->AzPosnErr));
+
+#if defined(POSITION_LOOP_ONLY)
     *dAlt = SIDEREAL_RATE_RPS * sign(AltPosnErr);
     *dAz = SIDEREAL_RATE_RPS * sign(AzPosnErr);
 #else
-
-#endif
+    // NOTE: THIS IS WRONG!!!
     // https://safe.nrao.edu/wiki/pub/Main/RadioTutorial/AzEltoSidereal.pdf
     // double ha_rad = ha2rad(localSiderealTime - targetRaPosn);
     *dAlt = SIDEREAL_RATE_RPS * sin(altPosnCmd_rad) + cos(deg2rad(localLatitude)) * sin(azPosnCmd_rad);
     *dAz = SIDEREAL_RATE_RPS * cos(targetDecPosn) * tan(altPosnCmd_rad);
+#endif
+}
+
+bool LFAST::MountControl::getSlewingRateCommands(double *dAlt, double *dAz)
+{
+    getPosnErrors(&(this->AltPosnErr), &(this->AzPosnErr));
+
+    double altRate = getAxisSlewRateCommand(this->AltPosnErr);
+    double azRate = getAxisSlewRateCommand(this->AzPosnErr);
+
+    bool slewCompleteFlag = (std::abs(azRate) == 0.0) && (std::abs(altRate) == 0.0);
+
+    *dAlt = altRate;
+    *dAz = azRate;
+
+    return slewCompleteFlag;
+}
+
+double LFAST::MountControl::getAxisSlewRateCommand(double axErr)
+{
+    double axisRateCmd;
+    if (std::abs(axErr) <= TRACK_ERR_THRESH)
+        axisRateCmd = 0.0;
+    else if ((std::abs(axErr) > TRACK_ERR_THRESH) && (std::abs(axErr) < FAST_SLEW_THRESH))
+        axisRateCmd = END_SLEW_RATE * sign(axErr);
+    else
+        axisRateCmd = MAX_SLEW_RATE * sign(axErr);
+    return axisRateCmd;
 }
 
 double LFAST::MountControl::getParallacticAngle()
@@ -234,8 +268,6 @@ void LFAST::MountControl::initSimMount()
 void LFAST::updateMountControl_ISR()
 {
     MountControl &mountControl = LFAST::MountControl::getMountController();
-    // std::string msg = "INSIDE MOUNT ISR!!";
-    // mountControl.cli.addDebugMessage(msg);
     switch (mountControl.mountStatus)
     {
     case MountControl::MOUNT_IDLE:
@@ -322,16 +354,14 @@ LFAST::MountControl::mountParkingHandler()
     altPosnCmd_rad = altParkPosn;
     azPosnCmd_rad = azParkPosn;
 
-    updatePosnErrors();
-
-    if (AltPosnErr == 0.0 && AzPosnErr == 0.0)
+    bool parkingComplete = getSlewingRateCommands(&altRateCmd_rps, &azRateCmd_rps);
+    if (parkingComplete)
     {
         return MOUNT_PARKED;
     }
     else
     {
-        altRateCmd_rps = ALT_SLEW_RATE * sign(AltPosnErr);
-        azRateCmd_rps = AZ_SLEW_RATE * sign(AzPosnErr);
+
         return MOUNT_PARKING;
     }
 }
@@ -357,8 +387,8 @@ LFAST::MountControl::mountHomingHandler()
 
     altPosnCmd_rad = 0.0;
     azPosnCmd_rad = 0.0;
-    updatePosnErrors();
-    if (AltPosnErr == 0.0 && AzPosnErr == 0.0)
+    bool homingComplete = getSlewingRateCommands(&altRateCmd_rps, &azRateCmd_rps);
+    if (homingComplete)
     {
         altRateCmd_rps = 0.0;
         azRateCmd_rps = 0.0;
@@ -366,8 +396,6 @@ LFAST::MountControl::mountHomingHandler()
     }
     else
     {
-        altRateCmd_rps = ALT_SLEW_RATE * sign(AltPosnErr);
-        azRateCmd_rps = AZ_SLEW_RATE * sign(AzPosnErr);
         return MOUNT_HOMING;
     }
 }
@@ -375,20 +403,22 @@ LFAST::MountControl::mountHomingHandler()
 LFAST::MountControl::MountStatus
 LFAST::MountControl::mountSlewingHandler()
 {
+
     MountCommandEvent cmdEvent = readEvent();
     if (cmdEvent == ABORT_COMMAND_RECEIVED)
         return MOUNT_IDLE;
+
     raDecToAltAz(targetRaPosn, targetDecPosn, &altPosnCmd_rad, &azPosnCmd_rad);
-    updatePosnErrors();
-    if (std::abs(AltPosnErr) < TRACK_ERR_THRESH && std::abs(AzPosnErr) < TRACK_ERR_THRESH)
+
+    bool slewComplete = getSlewingRateCommands(&altRateCmd_rps, &azRateCmd_rps);
+    if (slewComplete)
     {
+        cli.addDebugMessage("Slew is complete.", MountControl_CLI::INFO);
         getTrackingRateCommands(&altRateCmd_rps, &azRateCmd_rps);
         return MOUNT_TRACKING;
     }
     else
     {
-        altRateCmd_rps = ALT_SLEW_RATE * sign(AltPosnErr);
-        azRateCmd_rps = AZ_SLEW_RATE * sign(AzPosnErr);
         return MOUNT_SLEWING;
     }
 }
@@ -399,8 +429,9 @@ LFAST::MountControl::mountTrackingHandler()
     MountCommandEvent cmdEvent = readEvent();
     if (cmdEvent == ABORT_COMMAND_RECEIVED)
         return MOUNT_IDLE;
+    else if (cmdEvent == GOTO_COMMAND_RECEIVED)
+        return MOUNT_SLEWING;
     raDecToAltAz(targetRaPosn, targetDecPosn, &altPosnCmd_rad, &azPosnCmd_rad);
-    updatePosnErrors();
     getTrackingRateCommands(&altRateCmd_rps, &azRateCmd_rps);
     // TODO: Add guider offsets
     return MOUNT_TRACKING;
@@ -408,20 +439,38 @@ LFAST::MountControl::mountTrackingHandler()
 
 void LFAST::MountControl::updateSimMount()
 {
-    // TEST_SERIAL.println("Updating sim...");
-    if (std::abs(AzPosnErr) < azRateCmd_rps)
-    {
-        AzPosnErr = 0.0;
-        currentAzPosn = azPosnCmd_rad;
-    }
-    if (std::abs(AltPosnErr) < altRateCmd_rps)
-    {
-        AltPosnErr = 0.0;
-        currentAltPosn = altPosnCmd_rad;
-    }
+    static bool firstTime = true;
 
-    auto deltaAlt = altRateCmd_rps * deltaTimeSec;
-    auto deltaAz = azRateCmd_rps * deltaTimeSec;
+    static uint64_t prevTimeMillis = 0;
+    static uint64_t currentTimeMillis = 0;
+    double deltaTimeSecLocal = 0.0;
+    if (firstTime)
+    {
+        firstTime = false;
+        prevTimeMillis = 0;
+        currentTimeMillis = millis();
+    }
+    else
+    {
+        prevTimeMillis = currentTimeMillis;
+        currentTimeMillis = millis();
+        double deltaMilliSec = currentTimeMillis - prevTimeMillis;
+        deltaTimeSecLocal = deltaMilliSec * 0.001;
+    }
+    // TEST_SERIAL.println("Updating sim...");
+    // if (std::abs(AzPosnErr) < azRateCmd_rps)
+    // {
+    //     AzPosnErr = 0.0;
+    //     currentAzPosn = azPosnCmd_rad;
+    // }
+    // if (std::abs(AltPosnErr) < altRateCmd_rps)
+    // {
+    //     AltPosnErr = 0.0;
+    //     currentAltPosn = altPosnCmd_rad;
+    // }
+
+    auto deltaAlt = altRateCmd_rps * deltaTimeSecLocal;
+    auto deltaAz = azRateCmd_rps * deltaTimeSecLocal;
 
     currentAltPosn += deltaAlt;
     currentAltPosn = saturate(currentAltPosn, MIN_ALT_ANGLE_RAD, MAX_ALT_ANGLE_RAD);
