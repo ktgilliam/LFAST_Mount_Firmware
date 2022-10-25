@@ -11,6 +11,10 @@
 #include <device.h>
 #include <debug.h>
 
+const std::string SLEW_COMPLETE_MSG_STR = "Slew is complete.";
+const std::string GOTO_WHILE_PARKED_MSG_STR = "Received Goto command while parked.";
+const std::string ABORT_COMMAND_MSG_STR = "Received Abort Command.";
+
 LFAST::MountControl::MountControl()
     : AltDriveControl("ALT"), AzDriveControl("AZ")
 {
@@ -20,7 +24,6 @@ LFAST::MountControl::MountControl()
     DriveControl::configureLoopTimer(DEFAULT_SERVO_PRD);
     DriveControl::startLoopTimer();
     initializeCLI();
-
     readyFlag = false;
 }
 
@@ -217,8 +220,7 @@ double LFAST::MountControl::getTrackRate()
 
 void LFAST::MountControl::abortSlew()
 {
-    std::string msg = "Received abort Command.";
-    cli.addDebugMessage(msg, MountControl_CLI::WARNING);
+    cli.addDebugMessage(ABORT_COMMAND_MSG_STR, MountControl_CLI::WARNING);
     altPosnCmd_rad = currentAltPosn;
     azPosnCmd_rad = currentAzPosn;
     azRateCmd_rps = 0.0;
@@ -323,7 +325,7 @@ LFAST::MountControl::mountIdleHandler()
     case GOTO_COMMAND_RECEIVED:
         if (mountStatus == MOUNT_PARKED)
         {
-            cli.addDebugMessage("Received Goto command while parked.", MountControl_CLI::WARNING);
+            cli.addDebugMessage(GOTO_WHILE_PARKED_MSG_STR, MountControl_CLI::WARNING);
             nextStatus = mountStatus;
         }
         else
@@ -408,7 +410,7 @@ LFAST::MountControl::mountSlewingHandler()
     bool slewComplete = getSlewingRateCommands(&altRateCmd_rps, &azRateCmd_rps);
     if (slewComplete)
     {
-        cli.addDebugMessage("Slew is complete.", MountControl_CLI::INFO);
+        cli.addDebugMessage(SLEW_COMPLETE_MSG_STR, MountControl_CLI::INFO);
         slewCompleteFlag = true;
         getTrackingRateCommands(&altRateCmd_rps, &azRateCmd_rps);
         return MOUNT_TRACKING;
@@ -430,11 +432,19 @@ LFAST::MountControl::mountTrackingHandler()
         return MOUNT_SLEWING;
     else if (cmdEvent == PARK_COMMAND_RECEIVED)
         return MOUNT_PARKING;
-        
+
     raDecToAltAz(targetRaPosn, targetDecPosn, &altPosnCmd_rad, &azPosnCmd_rad);
     getTrackingRateCommands(&altRateCmd_rps, &azRateCmd_rps);
     // TODO: Add guider offsets
     return MOUNT_TRACKING;
+}
+
+void LFAST::MountControl::getLocalCoordinates(double *lat, double *lon, double *alt)
+{
+    cli.addDebugMessage("Coordinate request received.");
+    *lat = localLatitude;
+    *lon = localLongitude;
+    *alt = 0.0;
 }
 
 void LFAST::MountControl::updateSimMount()

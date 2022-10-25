@@ -19,6 +19,8 @@
 
 #include <MountControl.h>
 
+
+
 #define DEFAULT_MOUNT_UPDATE_PRD 5000 // Microseconds
 
 // void updateAltAzGotoCommand(uint8_t axis, double val);
@@ -30,6 +32,7 @@ void handshake(unsigned int val);
 void updateTime(double lst);
 void updateLatitude(double lat);
 void updateLongitude(double lon);
+void getLocalCoordinates(bool ignore);
 void sendRaDec(double lst);
 void sendParkedStatus(double lst);
 void sendTrackStatus(double lst);
@@ -47,6 +50,9 @@ void findHome(double lst);
 
 LFAST::EthernetCommsService *commsService;
 LFAST::MountControl *mountControlPtr;
+
+unsigned int mPort = 4400;
+byte myIp[] {192, 168, 121, 177};
 
 /**
  * @brief configure pins and test interfaces
@@ -71,9 +77,8 @@ void deviceSetup()
 void setup(void)
 {
     deviceSetup();
-
-    commsService = new LFAST::EthernetCommsService();
-
+    commsService = new LFAST::EthernetCommsService(myIp, mPort);
+    // commsService = new LFAST::EthernetCommsService();
     if (!commsService->Status())
     {
         TEST_SERIAL.println("Device Setup Failed.");
@@ -84,6 +89,7 @@ void setup(void)
         }
     }
 
+    commsService->registerMessageHandler<bool>("RequestLatLonAlt", getLocalCoordinates);
     commsService->registerMessageHandler<unsigned int>("Handshake", handshake);
     commsService->registerMessageHandler<double>("time", updateTime);
     commsService->registerMessageHandler<double>("latitude", updateLatitude);
@@ -170,14 +176,27 @@ void updateLongitude(double lon)
     mountControl.setLongitude(lon);
 }
 
+void getLocalCoordinates(bool ignore)
+{
+    LFAST::MountControl &mountControl = LFAST::MountControl::getMountController();
+    double lat, lon, alt;
+    mountControl.getLocalCoordinates(&lat, &lon, &alt);
+
+    LFAST::CommsMessage newMsg;
+
+    newMsg.addKeyValuePair<double>("LAT", lat);
+    newMsg.addKeyValuePair<double>("LON", lon);
+    newMsg.addKeyValuePair<double>("ALT", alt);
+    commsService->sendMessage(newMsg, LFAST::CommsService::ACTIVE_CONNECTION);
+}
 void sendRaDec(double lst)
 {
-    LFAST::CommsMessage newMsg;
     LFAST::MountControl &mountControl = LFAST::MountControl::getMountController();
 #if SIM_SCOPE_ENABLED
     mountControl.updateClock(lst);
 #endif
 
+    LFAST::CommsMessage newMsg;
     double ra = 0.0, dec = 0.0;
     mountControl.getCurrentRaDec(&ra, &dec);
     newMsg.addKeyValuePair<double>("RA", ra);

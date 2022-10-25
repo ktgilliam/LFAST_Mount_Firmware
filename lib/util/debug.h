@@ -8,7 +8,7 @@
 
 #pragma once
 #include <device.h>
-
+#include <cliMacros.h>
 
 inline void LedDebugBlink(uint32_t prd, uint32_t blinks)
 {

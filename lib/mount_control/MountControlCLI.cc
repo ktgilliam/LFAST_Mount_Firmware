@@ -14,6 +14,7 @@
 
 LFAST::MountControl_CLI::MountControl_CLI()
 {
+    CLEAR_CONSOLE();
     debugRowOffset = 0;
     debugMessageCount = 0;
     this->resetPrompt();
@@ -21,7 +22,6 @@ LFAST::MountControl_CLI::MountControl_CLI()
 
 void LFAST::MountControl_CLI::printMountStatusLabels()
 {
-    CLEAR_CONSOLE();
     CURSOR_TO_ROW(TOP_HEADER);
     TO_WHITE();
 

@@ -25,7 +25,9 @@
 
 #define DEFAULT_ALT_PARK (M_PI / 4.0)
 
-
+#define DEFAULT_LATITUDE 32.096453881991074
+#define DEFAULT_LONGITUDE -110.8133679034223
+#define DEFAULT_ELEVATION 884 //meters
 
 #define MAX_SLEW_RATE_RPS (SIDEREAL_RATE_RPS * SLEW_MULT)
 #define FAST_SLEW_THRESH (1.5 * MAX_SLEW_RATE_RPS) 
@@ -143,8 +145,10 @@ namespace LFAST
         double azOffset = 0.0;
         double altOffset = 0.0;
 
-        double localLatitude = 0.0;
-        double localLongitude = 0.0;
+        double localLatitude = DEFAULT_LATITUDE;
+        double localLongitude = DEFAULT_LONGITUDE;
+        double localElevation = DEFAULT_ELEVATION;
+
 
         double deltaTimeSec = 0.0;
 
@@ -239,7 +243,9 @@ namespace LFAST
         {
             return slewCompleteFlag;
         }
-        
+
+        void getLocalCoordinates(double *lat, double *lon, double *alt);
+
         friend void updateMountControl_ISR();
         void findHome();
         void park();
