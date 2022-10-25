@@ -1,22 +1,38 @@
 
-#include <cinttypes>
 #include <MountControl.h>
 
+#include <iostream>
+#include <string>
+#include <sstream>
+#include <iomanip>
+
+#include <cinttypes>
 #include <mathFuncs.h>
+
+// #include <patch.h>
+#define MOUNT_CONTROL_LABEL " LFAST MOUNT CONTROL "
 
 LFAST::MountControl_CLI::MountControl_CLI()
 {
-
+    CLEAR_CONSOLE();
+    debugRowOffset = 0;
+    debugMessageCount = 0;
     this->resetPrompt();
 };
 
 void LFAST::MountControl_CLI::printMountStatusLabels()
 {
-    CLEAR_CONSOLE();
     CURSOR_TO_ROW(TOP_HEADER);
-    TEST_SERIAL.printf("################################################################################################\r\n");
-    TEST_SERIAL.printf("###################################### LFAST MOUNT CONTROL #####################################\r\n");
-    TEST_SERIAL.printf("################################################################################################\r\n");
+    TO_WHITE();
+
+    std::string HEADER_BORDER_STRING = std::string(TERMINAL_WIDTH, '#');
+    std::string HEADER_LABEL_STRING = MOUNT_CONTROL_LABEL;
+    std::string HEADER_LABEL_ROW_SIDE = std::string((TERMINAL_WIDTH - HEADER_LABEL_STRING.size()) / 2, '#');
+    std::string HEADER_LABEL_ROW = HEADER_LABEL_ROW_SIDE + HEADER_LABEL_STRING + HEADER_LABEL_ROW_SIDE;
+
+    TEST_SERIAL.printf("%s\r\n", HEADER_BORDER_STRING.c_str());
+    TEST_SERIAL.printf("%s\r\n", HEADER_LABEL_ROW.c_str());
+    TEST_SERIAL.printf("%s\r\n", HEADER_BORDER_STRING.c_str());
 
     // TEST_SERIAL.printf("\033[32m");
     // TEST_SERIAL.printf("\033[%u;%uH", 4, 0);
@@ -28,18 +44,30 @@ void LFAST::MountControl_CLI::printMountStatusLabels()
     TEST_SERIAL.printf("\033[37mLocal Sidereal Time:\033[22G");
 
     CURSOR_TO_ROW(CURRENT_ALT);
-    TEST_SERIAL.printf("\033[37mCurrent Altitude:\r\n");
-    TEST_SERIAL.printf("\033[37mTarget Altitude:\r\n");
-    TEST_SERIAL.printf("\033[37mAltitude Rate:\r\n");
-    TEST_SERIAL.println();
+    TEST_SERIAL.printf("\033[37mCurrent Altitude:");
+    CURSOR_TO_ROW(TARGET_ALT);
+    TEST_SERIAL.printf("\033[37mTarget Altitude:");
+    CURSOR_TO_ROW(ALT_ERR);
+    TEST_SERIAL.printf("\033[37mAltitude error:");
+    CURSOR_TO_ROW(ALT_RATE);
+    TEST_SERIAL.printf("\033[37mAltitude Rate:");
 
-    TEST_SERIAL.printf("\033[37mCurrent Azimuth:\r\n");
-    TEST_SERIAL.printf("\033[37mTarget Azimuth:\r\n");
-    TEST_SERIAL.printf("\033[37mAzimuth Rate:\r\n");
-    TEST_SERIAL.println();
+    CURSOR_TO_ROW(CURRENT_AZ);
+    TEST_SERIAL.printf("\033[37mCurrent Azimuth:");
+    CURSOR_TO_ROW(TARGET_AZ);
+    TEST_SERIAL.printf("\033[37mTarget Azimuth:");
+    CURSOR_TO_ROW(AZ_ERR);
+    TEST_SERIAL.printf("\033[37mAzimuth error:");
+    CURSOR_TO_ROW(AZ_RATE);
+    TEST_SERIAL.printf("\033[37mAzimuth Rate:");
 
     CURSOR_TO_ROW_COL(MOUNT_STATUS, fieldStartCol);
     // TEST_SERIAL.printf("Waiting for connection to INDI Server. ");
+
+    CURSOR_TO_ROW_COL(DEBUG_BORDER_1, 0);
+    std::string DEBUG_BORDER_STR = std::string(TERMINAL_WIDTH, '-');
+    TEST_SERIAL.printf("%s\r\n", DEBUG_BORDER_STR.c_str());
+
     this->resetPrompt();
 }
 
@@ -51,30 +79,32 @@ void LFAST::MountControl_CLI::updateStatusFields(MountControl &mc)
     switch (mc.mountStatus)
     {
     case LFAST::MountControl::MOUNT_IDLE:
+        TO_WHITE();
         TEST_SERIAL.print("IDLE");
         break;
     case LFAST::MountControl::MOUNT_PARKING:
-        YELLOW();
+        TO_YELLOW();
         TEST_SERIAL.print("PARKING");
         break;
     case LFAST::MountControl::MOUNT_HOMING:
+        TO_CYAN();
         TEST_SERIAL.print("HOMING");
         break;
     case LFAST::MountControl::MOUNT_SLEWING:
-        MAGENTA();
+        TO_MAGENTA();
         TEST_SERIAL.print("SLEWING");
         break;
     case LFAST::MountControl::MOUNT_PARKED:
-        RED();
+        TO_RED();
         TEST_SERIAL.print("PARKED");
         break;
     case LFAST::MountControl::MOUNT_TRACKING:
-        GREEN();
+        TO_GREEN();
         TEST_SERIAL.print("TRACKING");
         break;
     }
     CLEAR_TO_END_OF_ROW();
-    WHITE();
+    TO_WHITE();
 
     // Print the local sidereal time field:
     CURSOR_TO_ROW_COL(SIDEREAL_TIME, fieldStartCol);
@@ -88,7 +118,11 @@ void LFAST::MountControl_CLI::updateStatusFields(MountControl &mc)
     CURSOR_TO_ROW_COL(TARGET_ALT, fieldStartCol);
     TEST_SERIAL.printf("%-8.4f", rad2deg(mc.altPosnCmd_rad));
 
-    // Print target altitude:
+    // Print altitude error:
+    CURSOR_TO_ROW_COL(ALT_ERR, fieldStartCol);
+    TEST_SERIAL.printf("%-8.4f", rad2deg(mc.AltPosnErr));
+
+    // Print altitude Rate:
     CURSOR_TO_ROW_COL(ALT_RATE, fieldStartCol);
     TEST_SERIAL.printf("%-8.4f", rad2deg(mc.altRateCmd_rps));
 
@@ -100,7 +134,11 @@ void LFAST::MountControl_CLI::updateStatusFields(MountControl &mc)
     CURSOR_TO_ROW_COL(TARGET_AZ, fieldStartCol);
     TEST_SERIAL.printf("%-8.4f", rad2deg(mc.azPosnCmd_rad));
 
-    // Print target azimuth:
+    // Print azimuth error:
+    CURSOR_TO_ROW_COL(AZ_ERR, fieldStartCol);
+    TEST_SERIAL.printf("%-8.4f", rad2deg(mc.AzPosnErr));
+
+    // Print azimuth rate:
     CURSOR_TO_ROW_COL(AZ_RATE, fieldStartCol);
     TEST_SERIAL.printf("%-8.4f", rad2deg(mc.azRateCmd_rps));
 }
@@ -120,6 +158,12 @@ void LFAST::MountControl_CLI::resetPrompt()
 
 void LFAST::MountControl_CLI::serviceCLI()
 {
+#if PRINT_SERVICE_COUNTER
+    static uint64_t serviceCounter = 0;
+    CURSOR_TO_ROW_COL(SERVICE_COUNTER_ROW, 0);
+    TEST_SERIAL.printf("[%o]", serviceCounter++);
+#endif
+
     CURSOR_TO_ROW_COL(PROMPT, currentInputCol);
     if (TEST_SERIAL.available() > 0)
     {
@@ -150,11 +194,51 @@ void LFAST::MountControl_CLI::handleCliCommand()
     CLEAR_TO_END_OF_ROW();
     TEST_SERIAL.printf("%s: Command Not Found.\r\n", rxBuff);
 
-    // for (int ii = 0; ii < 4; ii++)
-    // {
-    //     TEST_SERIAL.printf("%c ", rxBuff[ii]);
-    //     TEST_SERIAL.print(rxBuff[ii], HEX);
-    //     TEST_SERIAL.println();
-    // }
     resetPrompt();
+}
+
+void LFAST::MountControl_CLI::addDebugMessage(std::string msg, uint8_t level)
+{
+    debugMessageCount++;
+    std::string colorStr;
+    switch (level)
+    {
+    case INFO:
+        colorStr = WHITE;
+        break;
+    case DEBUG:
+        colorStr = GREEN;
+        break;
+    case WARNING:
+        colorStr = YELLOW;
+        break;
+    case ERROR:
+        colorStr = RED;
+        break;
+    }
+    std::stringstream ss;
+    ss << std::setiosflags(std::ios::left) << std::setw(6);
+    ss << WHITE << debugMessageCount + 1 << ": " << colorStr << msg;
+    std::string msgPrintSr = ss.str();
+
+    // TEST_SERIAL.printf("[%d]", debugMessageCount);
+
+    if (debugMessages.size() < MAX_DEBUG_ROWS)
+    {
+        CURSOR_TO_ROW_COL((DEBUG_MESSAGE_ROW + debugRowOffset++), 0);
+        CLEAR_TO_END_OF_ROW();
+        debugMessages.push_back(msgPrintSr);
+        TEST_SERIAL.println(msgPrintSr.c_str());
+    }
+    else
+    {
+        debugMessages.pop_front();
+        debugMessages.push_back(msgPrintSr);
+        for (uint16_t ii = 0; ii < MAX_DEBUG_ROWS; ii++)
+        {
+            CURSOR_TO_ROW_COL((DEBUG_MESSAGE_ROW + ii), 0);
+            CLEAR_TO_END_OF_ROW();
+            TEST_SERIAL.println(debugMessages.at(ii).c_str());
+        }
+    }
 }
