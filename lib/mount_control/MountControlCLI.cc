@@ -5,12 +5,15 @@
 #include <string>
 #include <sstream>
 #include <iomanip>
+#include <stdio.h>
 
 #include <cinttypes>
 #include <mathFuncs.h>
 
 // #include <patch.h>
 #define MOUNT_CONTROL_LABEL " LFAST MOUNT CONTROL "
+
+int fs_sexa(char *out, double a, int w, int fracbase);
 
 LFAST::MountControl_CLI::MountControl_CLI()
 {
@@ -30,9 +33,12 @@ void LFAST::MountControl_CLI::printMountStatusLabels()
     std::string HEADER_LABEL_ROW_SIDE = std::string((TERMINAL_WIDTH - HEADER_LABEL_STRING.size()) / 2, '#');
     std::string HEADER_LABEL_ROW = HEADER_LABEL_ROW_SIDE + HEADER_LABEL_STRING + HEADER_LABEL_ROW_SIDE;
 
-    TEST_SERIAL.printf("%s\r\n", HEADER_BORDER_STRING.c_str());
-    TEST_SERIAL.printf("%s\r\n", HEADER_LABEL_ROW.c_str());
-    TEST_SERIAL.printf("%s\r\n", HEADER_BORDER_STRING.c_str());
+    CURSOR_TO_ROW(TOP_HEADER);
+    TEST_SERIAL.printf("%s", HEADER_BORDER_STRING.c_str());
+    CURSOR_TO_ROW(MIDDLE_HEADER);
+    TEST_SERIAL.printf("%s", HEADER_LABEL_ROW.c_str());
+    CURSOR_TO_ROW(LOWER_HEADER);
+    TEST_SERIAL.printf("%s", HEADER_BORDER_STRING.c_str());
 
     // TEST_SERIAL.printf("\033[32m");
     // TEST_SERIAL.printf("\033[%u;%uH", 4, 0);
@@ -42,6 +48,11 @@ void LFAST::MountControl_CLI::printMountStatusLabels()
 
     CURSOR_TO_ROW(SIDEREAL_TIME);
     TEST_SERIAL.printf("\033[37mLocal Sidereal Time:\033[22G");
+
+    CURSOR_TO_ROW(COMMAND_RA);
+    TEST_SERIAL.printf("\033[37mTarget RA  (hh:mm:ss):\033[22G");
+    CURSOR_TO_ROW(COMMAND_DEC);
+    TEST_SERIAL.printf("\033[37mTarget DEC (dd:mm:ss):\033[22G");
 
     CURSOR_TO_ROW(CURRENT_ALT);
     TEST_SERIAL.printf("\033[37mCurrent Altitude:");
@@ -66,7 +77,7 @@ void LFAST::MountControl_CLI::printMountStatusLabels()
 
     CURSOR_TO_ROW_COL(DEBUG_BORDER_1, 0);
     std::string DEBUG_BORDER_STR = std::string(TERMINAL_WIDTH, '-');
-    TEST_SERIAL.printf("%s\r\n", DEBUG_BORDER_STR.c_str());
+    TEST_SERIAL.printf("%s", DEBUG_BORDER_STR.c_str());
 
     this->resetPrompt();
 }
@@ -78,69 +89,97 @@ void LFAST::MountControl_CLI::updateStatusFields(MountControl &mc)
     CURSOR_TO_ROW_COL(MOUNT_STATUS, fieldStartCol);
     switch (mc.mountStatus)
     {
-    case LFAST::MountControl::MOUNT_IDLE:
+    case MountControl::MOUNT_IDLE:
         TO_WHITE();
         TEST_SERIAL.print("IDLE");
         break;
-    case LFAST::MountControl::MOUNT_PARKING:
+    case MountControl::MOUNT_PARKING:
         TO_YELLOW();
         TEST_SERIAL.print("PARKING");
         break;
-    case LFAST::MountControl::MOUNT_HOMING:
+    case MountControl::MOUNT_HOMING:
         TO_CYAN();
         TEST_SERIAL.print("HOMING");
         break;
-    case LFAST::MountControl::MOUNT_SLEWING:
+    case MountControl::MOUNT_SLEWING:
         TO_MAGENTA();
         TEST_SERIAL.print("SLEWING");
         break;
-    case LFAST::MountControl::MOUNT_PARKED:
-        TO_RED();
+    case MountControl::MOUNT_PARKED:
+        TO_CYAN();
         TEST_SERIAL.print("PARKED");
         break;
-    case LFAST::MountControl::MOUNT_TRACKING:
+    case MountControl::MOUNT_TRACKING:
         TO_GREEN();
         TEST_SERIAL.print("TRACKING");
         break;
+    case MountControl::MOUNT_ERROR:
+        TO_RED();
+        TEST_SERIAL.print("ERROR");
     }
     CLEAR_TO_END_OF_ROW();
     TO_WHITE();
 
+    // const char degSymbol = (176);
     // Print the local sidereal time field:
+    char lstBuff[MAX_CLOCKBUFF_LEN];
+    fs_sexa(lstBuff, mc.localSiderealTime, 2, 3600);
     CURSOR_TO_ROW_COL(SIDEREAL_TIME, fieldStartCol);
-    TEST_SERIAL.print(mc.getClockStr(mc.localSiderealTime).c_str());
+    TEST_SERIAL.print(lstBuff);
+
+    // Print target RA:
+    char raBuff[MAX_CLOCKBUFF_LEN];
+    fs_sexa(raBuff, mc.targetRaPosn, 2, 3600);
+    CURSOR_TO_ROW_COL(COMMAND_RA, fieldStartCol);
+    // TEST_SERIAL.printf("%-+6.4f", (mc.targetRaPosn));
+    TEST_SERIAL.print(raBuff);
+
+    // Print target DEC:
+    char decBuff[MAX_CLOCKBUFF_LEN];
+    fs_sexa(decBuff, mc.targetDecPosn, 2, 3600);
+    CURSOR_TO_ROW_COL(COMMAND_DEC, fieldStartCol);
+    // TEST_SERIAL.printf("%-+6.4f", (mc.targetDecPosn));
+    TEST_SERIAL.print(decBuff);
 
     // Print current altitude:
     CURSOR_TO_ROW_COL(CURRENT_ALT, fieldStartCol);
-    TEST_SERIAL.printf("%-8.4f", rad2deg(mc.currentAltPosn));
+    TEST_SERIAL.printf("%-+6.4f\u00b0", rad2deg(mc.altPosnFb_rad));
+    CLEAR_TO_END_OF_ROW();
 
     // Print target altitude:
     CURSOR_TO_ROW_COL(TARGET_ALT, fieldStartCol);
-    TEST_SERIAL.printf("%-8.4f", rad2deg(mc.altPosnCmd_rad));
+    TEST_SERIAL.printf("%-+6.4f\u00b0", rad2deg(mc.altPosnCmd_rad));
+    CLEAR_TO_END_OF_ROW();
 
     // Print altitude error:
     CURSOR_TO_ROW_COL(ALT_ERR, fieldStartCol);
-    TEST_SERIAL.printf("%-8.4f", rad2deg(mc.AltPosnErr));
+    TEST_SERIAL.printf("%-+6.4f\u00b0", rad2deg(mc.AltPosnErr));
+    CLEAR_TO_END_OF_ROW();
 
     // Print altitude Rate:
     CURSOR_TO_ROW_COL(ALT_RATE, fieldStartCol);
-    TEST_SERIAL.printf("%-8.4f", rad2deg(mc.altRateCmd_rps));
+    TEST_SERIAL.printf("%-+6.4f\u00b0/s", rad2deg(mc.altRateCmd_rps));
+    CLEAR_TO_END_OF_ROW();
 
     // Print current azimuth:
     CURSOR_TO_ROW_COL(CURRENT_AZ, fieldStartCol);
-    TEST_SERIAL.printf("%-8.4f", rad2deg(mc.currentAzPosn));
+    TEST_SERIAL.printf("%-+6.4f\u00b0", rad2deg(mc.azPosnFb_rad));
+    CLEAR_TO_END_OF_ROW();
 
     // Print target azimuth:
     CURSOR_TO_ROW_COL(TARGET_AZ, fieldStartCol);
-    TEST_SERIAL.printf("%-8.4f", rad2deg(mc.azPosnCmd_rad));
+    TEST_SERIAL.printf("%-+6.4f\u00b0", rad2deg(mc.azPosnCmd_rad));
+    CLEAR_TO_END_OF_ROW();
 
     // Print azimuth error:
     CURSOR_TO_ROW_COL(AZ_ERR, fieldStartCol);
-    TEST_SERIAL.printf("%-8.4f", rad2deg(mc.AzPosnErr));
+    TEST_SERIAL.printf("%-+6.4f\u00b0", rad2deg(mc.AzPosnErr));
+    CLEAR_TO_END_OF_ROW();
 
     // Print azimuth rate:
     CURSOR_TO_ROW_COL(AZ_RATE, fieldStartCol);
-    TEST_SERIAL.printf("%-8.4f", rad2deg(mc.azRateCmd_rps));
+    TEST_SERIAL.printf("%-+6.4f\u00b0/s", rad2deg(mc.azRateCmd_rps));
+    CLEAR_TO_END_OF_ROW();
 }
 
 void LFAST::MountControl_CLI::resetPrompt()
@@ -197,7 +236,7 @@ void LFAST::MountControl_CLI::handleCliCommand()
     resetPrompt();
 }
 
-void LFAST::MountControl_CLI::addDebugMessage(std::string msg, uint8_t level)
+void LFAST::MountControl_CLI::addDebugMessage(const std::string &msg, uint8_t level)
 {
     debugMessageCount++;
     std::string colorStr;
@@ -218,7 +257,7 @@ void LFAST::MountControl_CLI::addDebugMessage(std::string msg, uint8_t level)
     }
     std::stringstream ss;
     ss << std::setiosflags(std::ios::left) << std::setw(6);
-    ss << WHITE << debugMessageCount + 1 << ": " << colorStr << msg;
+    ss << WHITE << debugMessageCount << ": " << colorStr << msg;
     std::string msgPrintSr = ss.str();
 
     // TEST_SERIAL.printf("[%d]", debugMessageCount);
@@ -241,4 +280,64 @@ void LFAST::MountControl_CLI::addDebugMessage(std::string msg, uint8_t level)
             TEST_SERIAL.println(debugMessages.at(ii).c_str());
         }
     }
+}
+
+
+int fs_sexa(char *out, double a, int w, int fracbase)
+{
+    char *out0 = out;
+    unsigned long n;
+    int d;
+    int f;
+    int m;
+    int s;
+    int isneg;
+
+    /* save whether it's negative but do all the rest with a positive */
+    isneg = (a < 0);
+    if (isneg)
+        a = -a;
+
+    /* convert to an integral number of whole portions */
+    n = (unsigned long)(a * fracbase + 0.5);
+    d = n / fracbase;
+    f = n % fracbase;
+
+    /* form the whole part; "negative 0" is a special case */
+    if (isneg && d == 0)
+        out += snprintf(out, MAX_CLOCKBUFF_LEN, "%*s-0", w - 2, "");
+    else
+        out += snprintf(out, MAX_CLOCKBUFF_LEN, "%*d", w, isneg ? -d : d);
+
+    /* do the rest */
+    switch (fracbase)
+    {
+    case 60: /* dd:mm */
+        m = f / (fracbase / 60);
+        out += snprintf(out, MAX_CLOCKBUFF_LEN, ":%02d", m);
+        break;
+    case 600: /* dd:mm.m */
+        out += snprintf(out, MAX_CLOCKBUFF_LEN, ":%02d.%1d", f / 10, f % 10);
+        break;
+    case 3600: /* dd:mm:ss */
+        m = f / (fracbase / 60);
+        s = f % (fracbase / 60);
+        out += snprintf(out, MAX_CLOCKBUFF_LEN, ":%02d:%02d", m, s);
+        break;
+    case 36000: /* dd:mm:ss.s*/
+        m = f / (fracbase / 60);
+        s = f % (fracbase / 60);
+        out += snprintf(out, MAX_CLOCKBUFF_LEN, ":%02d:%02d.%1d", m, s / 10, s % 10);
+        break;
+    case 360000: /* dd:mm:ss.ss */
+        m = f / (fracbase / 60);
+        s = f % (fracbase / 60);
+        out += snprintf(out, MAX_CLOCKBUFF_LEN, ":%02d:%02d.%02d", m, s / 100, s % 100);
+        break;
+    default:
+        printf("fs_sexa: unknown fracbase: %d\n", fracbase);
+        return -1;
+    }
+
+    return (out - out0);
 }

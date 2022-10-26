@@ -6,9 +6,9 @@
 #define  CURSOR_TO_ZEROZERO()   TEST_SERIAL.printf("\033[%u;%uH", 0, 0)
 #define  CURSOR_TO_DEBUG_ROW(n)   TEST_SERIAL.printf("\033[%u;%uH", 24+n, 0)
 
-#define  CURSOR_TO_ROW(n)   TEST_SERIAL.printf("\033[%u;%uH", n, 0)
+#define  CURSOR_TO_ROW(n)   TEST_SERIAL.printf("\033[%u;%uH", (n+1), 0)
 #define  CURSOR_TO_COL(n)  TEST_SERIAL.printf("\033[%uG", n)
-#define  CURSOR_TO_ROW_COL(n, m)   TEST_SERIAL.printf("\033[%u;%uH", n, m)
+#define  CURSOR_TO_ROW_COL(n, m)   TEST_SERIAL.printf("\033[%u;%uH", (n+1), m)
 
 
 #define RED     "\033[31m"

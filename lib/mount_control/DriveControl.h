@@ -11,21 +11,6 @@ namespace LFAST
     class DriveControl
     {
     public:
-        DriveControl(std::string label);
-        virtual ~DriveControl() {}
-
-        void enableDrive() {}
-        void disableDrive() {}
-        void setCurrentCommand() {}
-        void setVelocityCommand() {}
-        void setPositionCommand() {}
-        void getCurrentFeedback() {}
-        void getVelocityFeedback() {}
-        void getPositionFeedback() {}
-        void printLabel();
-        static void configureLoopTimer(uint32_t);
-        static void startLoopTimer();
-    protected:
         typedef enum
         {
             DISABLED = 0b000,
@@ -34,6 +19,23 @@ namespace LFAST
             CURRENT = 0b100
         } COMMAND_MODE;
 
+        DriveControl(std::string label);
+        virtual ~DriveControl() {}
+
+        void enableDrive() volatile {}
+        void disableDrive() volatile {}
+        void setControlMode(COMMAND_MODE _mode) volatile {mode = _mode;}
+        void setCurrentCommand() volatile {}
+        void setVelocityCommand() volatile {}
+        void setPositionCommand() volatile {}
+        void getCurrentFeedback() volatile {}
+        void getVelocityFeedback() volatile {}
+        void getPositionFeedback() volatile {}
+        void printLabel();
+        static void configureLoopTimer(uint32_t);
+        static void startLoopTimer();
+
+    protected:
         std::string DriveLabel;
         bool enabled;
         COMMAND_MODE mode;
