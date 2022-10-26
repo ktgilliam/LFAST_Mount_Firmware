@@ -1,5 +1,5 @@
 #include <MountControl.h>
-// LFAST::MountControl *mcInstance = 0;
+// MountControl *mcInstance = 0;
 
 #include <cmath>
 #include <TimerThree.h>
@@ -16,7 +16,7 @@ const std::string SLEW_COMPLETE_MSG_STR = "Slew is complete.";
 const std::string GOTO_WHILE_PARKED_MSG_STR = "Received Goto command while parked.";
 const std::string ABORT_COMMAND_MSG_STR = "Received Abort Command.";
 
-LFAST::MountControl::MountControl()
+MountControl::MountControl()
     : AltDriveControl("ALT"), AzDriveControl("AZ")
 {
 #if SIM_SCOPE_ENABLED
@@ -28,22 +28,22 @@ LFAST::MountControl::MountControl()
     readyFlag = false;
 }
 
-LFAST::MountControl &LFAST::MountControl::getMountController()
+MountControl &MountControl::getMountController()
 {
     static MountControl instance;
     return instance;
 }
 
-void LFAST::MountControl::setUpdatePeriod(uint32_t prd)
+void MountControl::setUpdatePeriod(uint32_t prd)
 {
     updatePrdUs = prd;
     Timer3.stop();
     Timer3.initialize(updatePrdUs);
-    Timer3.attachInterrupt(LFAST::updateMountControl_ISR);
+    Timer3.attachInterrupt(updateMountControl_ISR);
     Timer3.start();
 }
 
-void LFAST::MountControl::updateClock(double lst)
+void MountControl::updateClock(double lst)
 {
     double dt = lst - localSiderealTime;
     if (dt > 0.0)
@@ -53,17 +53,17 @@ void LFAST::MountControl::updateClock(double lst)
     }
 }
 
-void LFAST::MountControl::initializeCLI()
+void MountControl::initializeCLI()
 {
     cli.printMountStatusLabels();
 }
-void LFAST::MountControl::printMountStatus()
+void MountControl::printMountStatus()
 {
     cli.updateStatusFields(*this);
     // TEST_SERIAL.printf("\033[32m");
 }
 
-void LFAST::MountControl::findHome()
+void MountControl::findHome()
 {
     mountCmdEvents.push(HOME_COMMAND_RECEIVED);
 #if SIM_SCOPE_ENABLED
@@ -74,33 +74,33 @@ void LFAST::MountControl::findHome()
 #endif
 }
 
-void LFAST::MountControl::park()
+void MountControl::park()
 {
     std::string msg = "Received park Command.";
     cli.addDebugMessage(msg);
     mountCmdEvents.push(PARK_COMMAND_RECEIVED);
 }
 
-void LFAST::MountControl::unpark()
+void MountControl::unpark()
 {
     std::string msg = "Received unpark Command.";
     cli.addDebugMessage(msg);
     mountCmdEvents.push(UNPARK_COMMAND_RECEIVED);
 }
 
-void LFAST::MountControl::getPosnErrors(double *altErr, double *azErr)
+void MountControl::getPosnErrors(double *altErr, double *azErr)
 {
     double altErrorTmp = altPosnCmd_rad - altPosnFb_rad;
     double azErrorTmp = azPosnCmd_rad - azPosnFb_rad;
 
     while (std::abs(azErrorTmp) > M_PI)
-        azErrorTmp -= 2 * M_PI * sign(azErrorTmp);
+        azErrorTmp -= TWO_PI * sign(azErrorTmp);
 
     *altErr = altErrorTmp;
     *azErr = azErrorTmp;
 }
 
-void LFAST::MountControl::getTrackingRateCommands(double *dAlt, double *dAz)
+void MountControl::getTrackingRateCommands(double *dAlt, double *dAz)
 {
     getPosnErrors(&(this->AltPosnErr), &(this->AzPosnErr));
 
@@ -110,13 +110,13 @@ void LFAST::MountControl::getTrackingRateCommands(double *dAlt, double *dAz)
 #else
     // NOTE: THIS IS WRONG!!!
     // https://safe.nrao.edu/wiki/pub/Main/RadioTutorial/AzEltoSidereal.pdf
-    // double ha_rad = ha2rad(localSiderealTime - targetRaPosn);
+    // double ha_rad = hrs2rad(localSiderealTime - targetRaPosn);
     *dAlt = SIDEREAL_RATE_RPS * sin(altPosnCmd_rad) + cos(deg2rad(localLatitude)) * sin(azPosnCmd_rad);
     *dAz = SIDEREAL_RATE_RPS * cos(targetDecPosn) * tan(altPosnCmd_rad);
 #endif
 }
 
-bool LFAST::MountControl::getSlewingRateCommands(double *dAlt, double *dAz)
+bool MountControl::getSlewingRateCommands(double *dAlt, double *dAz)
 {
     getPosnErrors(&(this->AltPosnErr), &(this->AzPosnErr));
 
@@ -131,7 +131,7 @@ bool LFAST::MountControl::getSlewingRateCommands(double *dAlt, double *dAz)
     return slewCompleteFlag;
 }
 
-double LFAST::MountControl::getAxisSlewRateCommand(double axErr)
+double MountControl::getAxisSlewRateCommand(double axErr)
 {
     double axisRateCmd;
     if (std::abs(axErr) <= TRACK_ERR_THRESH)
@@ -143,28 +143,28 @@ double LFAST::MountControl::getAxisSlewRateCommand(double axErr)
     return axisRateCmd;
 }
 
-double LFAST::MountControl::getParallacticAngle()
+double MountControl::getParallacticAngle()
 {
     double h = localSiderealTime; // hour angle
-    // double a = ha2rad(h - targetRaPosn); // Target right ascension
+    // double a = hrs2rad(h - targetRaPosn); // Target right ascension
     double d = deg2rad(targetDecPosn); // Target declination
     double p = deg2rad(localLatitude); // Latitude
     double q = atan2(sin(h), (cos(d) * tan(p) - sin(d) * cos(h)));
     return q;
 }
 
-void LFAST::MountControl::raDecToAltAz(double ra, double dec, double *alt, double *az)
+void MountControl::raDecToAltAz(double ra_hrs, double dec_deg, double *alt, double *az)
 {
-    double ha_rad = ha2rad(localSiderealTime - ra);
-    double dec_rad = deg2rad(dec);
+    double ha_rad = hrs2rad(localSiderealTime - ra_hrs);
+    double dec_rad = deg2rad(dec_deg);
 
     if (ha_rad < 0)
     {
-        ha_rad += (2 * M_PI);
+        ha_rad += (TWO_PI);
     }
     if (ha_rad > M_PI)
     {
-        ha_rad = ha_rad - (2 * M_PI);
+        ha_rad = ha_rad - (TWO_PI);
     }
 
     double lat_rad = deg2rad(localLatitude);
@@ -172,7 +172,7 @@ void LFAST::MountControl::raDecToAltAz(double ra, double dec, double *alt, doubl
     double AzTmp = atan2(sin(ha_rad),
                          cos(ha_rad) * sin(lat_rad) - tan(dec_rad) * cos(lat_rad)) -
                    M_PI;
-    AzTmp = AzTmp >= 0 ? AzTmp : (AzTmp + 2 * M_PI);
+    AzTmp = AzTmp >= 0 ? AzTmp : (AzTmp + TWO_PI);
 
     double AltTmp = asin(sin(lat_rad) * sin(dec_rad) + cos(lat_rad) * cos(dec_rad) * cos(ha_rad));
 
@@ -180,33 +180,33 @@ void LFAST::MountControl::raDecToAltAz(double ra, double dec, double *alt, doubl
     *az = AzTmp;
 }
 
-void LFAST::MountControl::updateTargetRaDec(double ra, double dec)
+void MountControl::updateTargetRaDec(double ra, double dec)
 {
     targetRaPosn = ra;
     targetDecPosn = dec;
     char dbgMsg[50];
     sprintf(dbgMsg, "Received Goto Command: [%6.4f ; %6.4f]", ra, dec);
-    cli.addDebugMessage(std::string(dbgMsg), MountControl_CLI::WARNING);
+    cli.addDebugMessage(std::string(dbgMsg), LFAST::WARNING);
 
     mountCmdEvents.push(GOTO_COMMAND_RECEIVED);
 }
 
-void LFAST::MountControl::syncRaDec(double ra, double dec)
+void MountControl::syncRaDec(double ra_hrs, double dec_deg)
 {
     double newAlt, newAz;
-    raDecToAltAz(ra, dec, &newAlt, &newAz);
+    raDecToAltAz(ra_hrs, dec_deg, &newAlt, &newAz);
     altPosnFb_rad = newAlt;
     azPosnFb_rad = newAz;
 }
 
-double LFAST::MountControl::getTrackRate()
+double MountControl::getTrackRate()
 {
     return std::sqrt(azRateCmd_rps * azRateCmd_rps + altRateCmd_rps * altRateCmd_rps) / 3200.0;
 }
 
-void LFAST::MountControl::abortSlew()
+void MountControl::abortSlew()
 {
-    cli.addDebugMessage(ABORT_COMMAND_MSG_STR, MountControl_CLI::WARNING);
+    cli.addDebugMessage(ABORT_COMMAND_MSG_STR, LFAST::WARNING);
     altPosnCmd_rad = altPosnFb_rad;
     azPosnCmd_rad = azPosnFb_rad;
     azRateCmd_rps = 0.0;
@@ -214,7 +214,7 @@ void LFAST::MountControl::abortSlew()
     mountCmdEvents.push(ABORT_COMMAND_RECEIVED);
 }
 
-void LFAST::MountControl::getCurrentRaDec(double *ra, double *dec)
+void MountControl::getCurrentRaDec(double *ra, double *dec)
 {
     double haTmp;
     altAzToHADec(altPosnFb_rad, azPosnFb_rad, &haTmp, dec);
@@ -223,7 +223,7 @@ void LFAST::MountControl::getCurrentRaDec(double *ra, double *dec)
         *ra = localSiderealTime - haTmp;
 }
 
-void LFAST::MountControl::altAzToHADec(double alt, double az, double *ha, double *dec)
+void MountControl::altAzToHADec(double alt, double az, double *ha, double *dec)
 {
     double lat_rad = deg2rad(localLatitude);
     double haTmp = atan2(-sin(az), tan(alt) * cos(lat_rad) - cos(az) * sin(lat_rad));
@@ -238,16 +238,16 @@ void LFAST::MountControl::altAzToHADec(double alt, double az, double *ha, double
     return;
 }
 
-void LFAST::MountControl::initSimMount()
+void MountControl::initSimMount()
 {
     mountStatus = MOUNT_PARKED;
     altPosnFb_rad = altParkPosn;
     azPosnFb_rad = azParkPosn;
 }
 
-void LFAST::updateMountControl_ISR()
+void updateMountControl_ISR()
 {
-    MountControl &mountControl = LFAST::MountControl::getMountController();
+    MountControl &mountControl = MountControl::getMountController();
     switch (mountControl.mountStatus)
     {
     case MountControl::MOUNT_IDLE:
@@ -276,8 +276,8 @@ void LFAST::updateMountControl_ISR()
     mountControl.updateSimMount();
 }
 
-LFAST::MountControl::MountCommandEvent
-LFAST::MountControl::readEvent()
+MountControl::MountCommandEvent
+MountControl::readEvent()
 {
     MountCommandEvent event;
     if (!mountCmdEvents.empty())
@@ -292,8 +292,8 @@ LFAST::MountControl::readEvent()
     return event;
 }
 
-LFAST::MountControl::MountStatus
-LFAST::MountControl::mountIdleHandler()
+MountControl::MountStatus
+MountControl::mountIdleHandler()
 {
     MountCommandEvent cmdEvent = readEvent();
     MountStatus nextStatus = MOUNT_IDLE;
@@ -325,8 +325,8 @@ LFAST::MountControl::mountIdleHandler()
     return nextStatus;
 }
 
-LFAST::MountControl::MountStatus
-LFAST::MountControl::mountParkingHandler()
+MountControl::MountStatus
+MountControl::mountParkingHandler()
 {
     MountCommandEvent cmdEvent = readEvent();
     if (cmdEvent == ABORT_COMMAND_RECEIVED)
@@ -348,8 +348,8 @@ LFAST::MountControl::mountParkingHandler()
     }
 }
 
-LFAST::MountControl::MountStatus
-LFAST::MountControl::mountParkedHandler()
+MountControl::MountStatus
+MountControl::mountParkedHandler()
 {
     altRateCmd_rps = 0.0;
     azRateCmd_rps = 0.0;
@@ -360,8 +360,8 @@ LFAST::MountControl::mountParkedHandler()
         return MOUNT_PARKED;
 }
 
-LFAST::MountControl::MountStatus
-LFAST::MountControl::mountHomingHandler()
+MountControl::MountStatus
+MountControl::mountHomingHandler()
 {
     MountCommandEvent cmdEvent = readEvent();
     if (cmdEvent == ABORT_COMMAND_RECEIVED)
@@ -386,8 +386,8 @@ LFAST::MountControl::mountHomingHandler()
     }
 }
 
-LFAST::MountControl::MountStatus
-LFAST::MountControl::mountSlewingHandler()
+MountControl::MountStatus
+MountControl::mountSlewingHandler()
 {
     MountCommandEvent cmdEvent = readEvent();
     if (cmdEvent == ABORT_COMMAND_RECEIVED)
@@ -402,7 +402,7 @@ LFAST::MountControl::mountSlewingHandler()
     bool slewComplete = getSlewingRateCommands(&altRateCmd_rps, &azRateCmd_rps);
     if (slewComplete)
     {
-        cli.addDebugMessage(SLEW_COMPLETE_MSG_STR, MountControl_CLI::INFO);
+        cli.addDebugMessage(SLEW_COMPLETE_MSG_STR, LFAST::INFO);
         slewCompleteFlag = true;
         getTrackingRateCommands(&altRateCmd_rps, &azRateCmd_rps);
         return MOUNT_TRACKING;
@@ -414,8 +414,8 @@ LFAST::MountControl::mountSlewingHandler()
     }
 }
 
-LFAST::MountControl::MountStatus
-LFAST::MountControl::mountTrackingHandler()
+MountControl::MountStatus
+MountControl::mountTrackingHandler()
 {
     MountCommandEvent cmdEvent = readEvent();
     if (cmdEvent == ABORT_COMMAND_RECEIVED)
@@ -440,8 +440,8 @@ LFAST::MountControl::mountTrackingHandler()
     return MOUNT_TRACKING;
 }
 
-LFAST::MountControl::MountStatus
-LFAST::MountControl::mountErrorHandler()
+MountControl::MountStatus
+MountControl::mountErrorHandler()
 {
     altRateCmd_rps = 0.0;
     azRateCmd_rps = 0.0;
@@ -450,7 +450,7 @@ LFAST::MountControl::mountErrorHandler()
     static bool printedErrorMsg = false;
     if (!printedErrorMsg)
     {
-        cli.addDebugMessage("Mount Stopped (Invalid command received).", MountControl_CLI::ERROR);
+        cli.addDebugMessage("Mount Stopped (Invalid command received).", LFAST::ERROR);
         printedErrorMsg = true;
     }
     switch (cmdEvent)
@@ -480,7 +480,7 @@ LFAST::MountControl::mountErrorHandler()
     return nextStatus;
 }
 
-void LFAST::MountControl::getLocalCoordinates(double *lat, double *lon, double *alt)
+void MountControl::getLocalCoordinates(double *lat, double *lon, double *alt)
 {
     cli.addDebugMessage("Coordinate request received.");
     *lat = localLatitude;
@@ -488,7 +488,22 @@ void LFAST::MountControl::getLocalCoordinates(double *lat, double *lon, double *
     *alt = 0.0;
 }
 
-void LFAST::MountControl::updateSimMount()
+void MountControl::setGuiderOffset(uint8_t axis, double rate)
+{
+    if(axis == LFAST::RA_AXIS)
+        raGuiderOffset = arcsec2rad(rate);
+    else if (axis == LFAST::DEC_AXIS)
+        decGuiderOffset = arcsec2rad(rate);
+    else
+    {
+        raGuiderOffset = 0.0;
+        decGuiderOffset = 0.0;
+        cli.addDebugMessage("Invalid guide axis", LFAST::WARNING);
+    }
+
+}
+
+void MountControl::updateSimMount()
 {
     static bool firstTime = true;
 
@@ -517,8 +532,8 @@ void LFAST::MountControl::updateSimMount()
     // altPosnFb_rad = saturate(altPosnFb_rad, MIN_ALT_ANGLE_RAD, MAX_ALT_ANGLE_RAD);
 
     azPosnFb_rad += deltaAz;
-    if (azPosnFb_rad > (2 * M_PI))
-        azPosnFb_rad -= (2 * M_PI);
+    if (azPosnFb_rad > (TWO_PI))
+        azPosnFb_rad -= (TWO_PI);
     else if (azPosnFb_rad < 0)
-        azPosnFb_rad += (2 * M_PI);
+        azPosnFb_rad += (TWO_PI);
 }

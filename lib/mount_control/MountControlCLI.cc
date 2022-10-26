@@ -15,7 +15,7 @@
 
 int fs_sexa(char *out, double a, int w, int fracbase);
 
-LFAST::MountControl_CLI::MountControl_CLI()
+MountControl_CLI::MountControl_CLI()
 {
     CLEAR_CONSOLE();
     debugRowOffset = 0;
@@ -23,7 +23,7 @@ LFAST::MountControl_CLI::MountControl_CLI()
     this->resetPrompt();
 };
 
-void LFAST::MountControl_CLI::printMountStatusLabels()
+void MountControl_CLI::printMountStatusLabels()
 {
     CURSOR_TO_ROW(TOP_HEADER);
     TO_WHITE();
@@ -82,7 +82,7 @@ void LFAST::MountControl_CLI::printMountStatusLabels()
     this->resetPrompt();
 }
 
-void LFAST::MountControl_CLI::updateStatusFields(MountControl &mc)
+void MountControl_CLI::updateStatusFields(MountControl &mc)
 {
     HIDE_CURSOR();
     // Print the mount status field:
@@ -182,7 +182,7 @@ void LFAST::MountControl_CLI::updateStatusFields(MountControl &mc)
     CLEAR_TO_END_OF_ROW();
 }
 
-void LFAST::MountControl_CLI::resetPrompt()
+void MountControl_CLI::resetPrompt()
 {
     SHOW_CURSOR();
     std::memset(rxBuff, '\0', CLI_BUFF_LENGTH);
@@ -195,7 +195,7 @@ void LFAST::MountControl_CLI::resetPrompt()
     // BLINKING();
 }
 
-void LFAST::MountControl_CLI::serviceCLI()
+void MountControl_CLI::serviceCLI()
 {
 #if PRINT_SERVICE_COUNTER
     static uint64_t serviceCounter = 0;
@@ -227,7 +227,7 @@ void LFAST::MountControl_CLI::serviceCLI()
     }
 }
 
-void LFAST::MountControl_CLI::handleCliCommand()
+void MountControl_CLI::handleCliCommand()
 {
     CURSOR_TO_ROW(PROMPT_FEEDBACK);
     CLEAR_TO_END_OF_ROW();
@@ -236,22 +236,22 @@ void LFAST::MountControl_CLI::handleCliCommand()
     resetPrompt();
 }
 
-void LFAST::MountControl_CLI::addDebugMessage(const std::string &msg, uint8_t level)
+void MountControl_CLI::addDebugMessage(const std::string &msg, uint8_t level)
 {
     debugMessageCount++;
     std::string colorStr;
     switch (level)
     {
-    case INFO:
+    case LFAST::INFO:
         colorStr = WHITE;
         break;
-    case DEBUG:
+    case LFAST::DEBUG:
         colorStr = GREEN;
         break;
-    case WARNING:
+    case LFAST::WARNING:
         colorStr = YELLOW;
         break;
-    case ERROR:
+    case LFAST::ERROR:
         colorStr = RED;
         break;
     }

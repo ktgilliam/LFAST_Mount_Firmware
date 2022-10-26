@@ -49,7 +49,7 @@ void syncDecPosition(double currentDecPosn);
 void findHome(double lst);
 
 LFAST::EthernetCommsService *commsService;
-LFAST::MountControl *mountControlPtr;
+MountControl *mountControlPtr;
 
 unsigned int mPort = 4400;
 byte myIp[] {192, 168, 121, 177};
@@ -117,7 +117,7 @@ void setup(void)
     resetHeartbeat();
     setHeartBeatPeriod(400000);
 
-    LFAST::MountControl &mountControl = LFAST::MountControl::getMountController();
+    MountControl &mountControl = MountControl::getMountController();
     mountControl.setUpdatePeriod(DEFAULT_MOUNT_UPDATE_PRD);
     std::string msg = "Initialization complete";
     mountControl.cli.addDebugMessage(msg);
@@ -130,7 +130,7 @@ void loop(void)
     commsService->processClientData();
     commsService->stopDisconnectedClients();
 
-    LFAST::MountControl &mountControl = LFAST::MountControl::getMountController();
+    MountControl &mountControl = MountControl::getMountController();
     mountControl.serviceCLI();
     // mountControl.cli.printDebugMessages();
 }
@@ -142,7 +142,7 @@ void handshake(unsigned int val)
     {
         newMsg.addKeyValuePair<unsigned int>("Handshake", 0xBEEF);
         commsService->sendMessage(newMsg, LFAST::CommsService::ACTIVE_CONNECTION);
-        LFAST::MountControl &mountControl = LFAST::MountControl::getMountController();
+        MountControl &mountControl = MountControl::getMountController();
         std::string msg = "Connected to client.";
         mountControl.cli.addDebugMessage(msg);
     }
@@ -160,25 +160,25 @@ void setNoReply(bool flag)
 
 void updateTime(double lst)
 {
-    LFAST::MountControl &mountControl = LFAST::MountControl::getMountController();
+    MountControl &mountControl = MountControl::getMountController();
     mountControl.updateClock(lst);
 }
 
 void updateLatitude(double lat)
 {
-    LFAST::MountControl &mountControl = LFAST::MountControl::getMountController();
+    MountControl &mountControl = MountControl::getMountController();
     mountControl.setLatitude(lat);
 }
 
 void updateLongitude(double lon)
 {
-    LFAST::MountControl &mountControl = LFAST::MountControl::getMountController();
+    MountControl &mountControl = MountControl::getMountController();
     mountControl.setLongitude(lon);
 }
 
 void getLocalCoordinates(bool ignore)
 {
-    LFAST::MountControl &mountControl = LFAST::MountControl::getMountController();
+    MountControl &mountControl = MountControl::getMountController();
     double lat, lon, alt;
     mountControl.getLocalCoordinates(&lat, &lon, &alt);
 
@@ -191,7 +191,7 @@ void getLocalCoordinates(bool ignore)
 }
 void sendRaDec(double lst)
 {
-    LFAST::MountControl &mountControl = LFAST::MountControl::getMountController();
+    MountControl &mountControl = MountControl::getMountController();
 #if SIM_SCOPE_ENABLED
     mountControl.updateClock(lst);
 #endif
@@ -206,7 +206,7 @@ void sendRaDec(double lst)
 
 void sendTrackStatus(double lst)
 {
-    LFAST::MountControl &mountControl = LFAST::MountControl::getMountController();
+    MountControl &mountControl = MountControl::getMountController();
 #if SIM_SCOPE_ENABLED
     mountControl.updateClock(lst);
 #endif
@@ -217,7 +217,7 @@ void sendTrackStatus(double lst)
 
 void parkScope(double lst)
 {
-    LFAST::MountControl &mountControl = LFAST::MountControl::getMountController();
+    MountControl &mountControl = MountControl::getMountController();
     mountControl.park();
 #if SIM_SCOPE_ENABLED
     mountControl.updateClock(lst);
@@ -230,7 +230,7 @@ void parkScope(double lst)
 
 void unparkScope(double lst)
 {
-    LFAST::MountControl &mountControl = LFAST::MountControl::getMountController();
+    MountControl &mountControl = MountControl::getMountController();
     mountControl.unpark();
 #if SIM_SCOPE_ENABLED
     mountControl.updateClock(lst);
@@ -243,7 +243,7 @@ void unparkScope(double lst)
 
 void sendParkedStatus(double lst)
 {
-    LFAST::MountControl &mountControl = LFAST::MountControl::getMountController();
+    MountControl &mountControl = MountControl::getMountController();
     bool isParked = mountControl.mountIsParked();
     // if (isParked)
     //     mountControl.cli.addDebugMessage("Park Status Requested (1).");
@@ -266,7 +266,7 @@ void noDisconnect(bool noDiscoFlag)
 
 void abortSlew(double lst)
 {
-    LFAST::MountControl &mountControl = LFAST::MountControl::getMountController();
+    MountControl &mountControl = MountControl::getMountController();
     mountControl.abortSlew();
     LFAST::CommsMessage newMsg;
     newMsg.addKeyValuePair<std::string>("AbortSlew", "$OK^");
@@ -275,7 +275,7 @@ void abortSlew(double lst)
 
 void sendSlewCompleteStatus(double lst)
 {
-    LFAST::MountControl &mountControl = LFAST::MountControl::getMountController();
+    MountControl &mountControl = MountControl::getMountController();
 #if SIM_SCOPE_ENABLED
     mountControl.updateClock(lst);
 #endif
@@ -286,36 +286,36 @@ void sendSlewCompleteStatus(double lst)
 
 // void slewToAlt(double targetAlt)
 // {
-//     updateAltAzGotoCommand(LFAST::MountControl::ALT_AXIS, targetAlt);
+//     updateAltAzGotoCommand(MountControl::ALT_AXIS, targetAlt);
 // }
 
 // void slewToAz(double targetAz)
 // {
-//     updateAltAzGotoCommand(LFAST::MountControl::AZ_AXIS, targetAz);
+//     updateAltAzGotoCommand(MountControl::AZ_AXIS, targetAz);
 // }
 
 void slewToRa(double targetRa)
 {
-    updateRaDecGotoCommand(LFAST::MountControl::RA_AXIS, targetRa);
+    updateRaDecGotoCommand(LFAST::RA_AXIS, targetRa);
 }
 void slewToDec(double targetDec)
 {
-    updateRaDecGotoCommand(LFAST::MountControl::DEC_AXIS, targetDec);
+    updateRaDecGotoCommand(LFAST::DEC_AXIS, targetDec);
 }
 
 void syncRaPosition(double currentRaPosn)
 {
-    updateSyncCommand(LFAST::MountControl::RA_AXIS, currentRaPosn);
+    updateSyncCommand(LFAST::RA_AXIS, currentRaPosn);
 }
 
 void syncDecPosition(double currentDecPosn)
 {
-    updateSyncCommand(LFAST::MountControl::DEC_AXIS, currentDecPosn);
+    updateSyncCommand(LFAST::DEC_AXIS, currentDecPosn);
 }
 
 void findHome(double lst)
 {
-    LFAST::MountControl &mountControl = LFAST::MountControl::getMountController();
+    MountControl &mountControl = MountControl::getMountController();
     mountControl.findHome();
 #if SIM_SCOPE_ENABLED
 #endif
@@ -331,13 +331,13 @@ void updateRaDecGotoCommand(uint8_t axis, double val)
     static bool decUpdated = false;
     static double raVal = 0.0;
     static double decVal = 0.0;
-    LFAST::MountControl &mountControl = LFAST::MountControl::getMountController();
-    if (axis == LFAST::MountControl::RA_AXIS)
+    MountControl &mountControl = MountControl::getMountController();
+    if (axis == LFAST::RA_AXIS)
     {
         raVal = val;
         raUpdated = true;
     }
-    else if (axis == LFAST::MountControl::DEC_AXIS)
+    else if (axis == LFAST::DEC_AXIS)
     {
         decVal = val;
         decUpdated = true;
@@ -363,13 +363,13 @@ void updateSyncCommand(uint8_t axis, double val)
     static bool decUpdated = false;
     static double raVal = 0.0;
     static double decVal = 0.0;
-    LFAST::MountControl &mountControl = LFAST::MountControl::getMountController();
-    if (axis == LFAST::MountControl::RA_AXIS)
+    MountControl &mountControl = MountControl::getMountController();
+    if (axis == LFAST::RA_AXIS)
     {
         raVal = val;
         raUpdated = true;
     }
-    else if (axis == LFAST::MountControl::DEC_AXIS)
+    else if (axis == LFAST::DEC_AXIS)
     {
         decVal = val;
         decUpdated = true;

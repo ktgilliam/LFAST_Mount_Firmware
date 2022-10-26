@@ -8,9 +8,9 @@
 #include <debug.h>
 #include <device.h>
 
-std::map<std::string, LFAST::DriveControl *> LFAST::DriveControl::Drives;
+std::map<std::string, DriveControl *> DriveControl::Drives;
 
-LFAST::DriveControl::DriveControl(std::string label)
+DriveControl::DriveControl(std::string label)
     : DriveLabel(label)
 {
     this->enabled = false;
@@ -22,7 +22,7 @@ LFAST::DriveControl::DriveControl(std::string label)
     Drives[label] = this;
 }
 
-void LFAST::DriveControl::update_ISR()
+void DriveControl::update_ISR()
 {
     for (const auto &m : Drives)
     {
@@ -33,19 +33,19 @@ void LFAST::DriveControl::update_ISR()
     // toggleHeartbeatState();
 }
 
-void LFAST::DriveControl::configureLoopTimer(uint32_t prd)
+void DriveControl::configureLoopTimer(uint32_t prd)
 {
     // DriveControl::timerPerioduS = prd;
     Timer1.initialize(prd);
-    Timer1.attachInterrupt(LFAST::DriveControl::update_ISR); // blinkLED to run every 0.15 seconds
+    Timer1.attachInterrupt(DriveControl::update_ISR); // blinkLED to run every 0.15 seconds
     // Timer1.stop();
 }
 
-void LFAST::DriveControl::startLoopTimer()
+void DriveControl::startLoopTimer()
 {
     Timer1.start();
 }
-void LFAST::DriveControl::printLabel()
+void DriveControl::printLabel()
 {
     TEST_SERIAL.printf("%s\033[0K\r\n", this->DriveLabel.c_str());
 }
