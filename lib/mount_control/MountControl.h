@@ -8,29 +8,17 @@
 #include <deque>
 // #include <vector>
 
-
-
 #define SIM_SCOPE_ENABLED 1
 #define SLEW_MULT 512
 
-#if SIM_SCOPE_ENABLED
 #define SIDEREAL_RATE_RPS (0.000072921) //(15.041067 / 3600.0 * M_PI / 180.0)
-
-
-#define SCOPE_PARK_TIME_COUNT 100
-#endif
-
-#define MIN_ALT_ANGLE_RAD 0.0
-#define MAX_ALT_ANGLE_RAD (M_PI / 2.0)
-
-#define DEFAULT_ALT_PARK (M_PI / 4.0)
 
 #define DEFAULT_LATITUDE 32.096453881991074
 #define DEFAULT_LONGITUDE -110.8133679034223
-#define DEFAULT_ELEVATION 884 //meters
+#define DEFAULT_ELEVATION 884 // meters
 
 #define MAX_SLEW_RATE_RPS (SIDEREAL_RATE_RPS * SLEW_MULT)
-#define FAST_SLEW_THRESH (1.5 * MAX_SLEW_RATE_RPS) 
+#define FAST_SLEW_THRESH (1.5 * MAX_SLEW_RATE_RPS)
 
 #define END_SLEW_RATE_RPS (0.1 * MAX_SLEW_RATE_RPS)
 #define END_SLEW_THRESH (1.5 * END_SLEW_RATE_RPS)
@@ -46,18 +34,23 @@
 #define TERMINAL_WIDTH 95
 #define PRINT_SERVICE_COUNTER 0
 
-#if SIM_SCOPE_ENABLED
-    #define SIM_PROP_GAIN 0.01
-#endif
+#define ALT_PARK_POSN_RAD (-20.0 * M_PI / 180.0)
+
+#define MIN_ALT_ANGLE_RAD 0.0
+#define MAX_ALT_ANGLE_RAD (M_PI / 2.0)
+
+#define MAX_CLOCKBUFF_LEN 64
+
 namespace LFAST
 {
 
     class MountControl;
     class MountControl_CLI
     {
-        private:
+    private:
         uint16_t debugMessageCount;
         uint16_t debugRowOffset;
+
     protected:
         enum CLI_ROWS
         {
@@ -65,9 +58,11 @@ namespace LFAST
             MIDDLE_HEADER,
             LOWER_HEADER,
             EMPTY_1,
-            EMPTY_2,
             MOUNT_STATUS,
             SIDEREAL_TIME,
+            EMPTY_2,
+            COMMAND_RA,
+            COMMAND_DEC,
             EMPTY_3,
             CURRENT_ALT,
             TARGET_ALT,
@@ -82,9 +77,9 @@ namespace LFAST
             EMPTY_6,
             PROMPT,
             PROMPT_FEEDBACK,
-            #if PRINT_SERVICE_COUNTER
+#if PRINT_SERVICE_COUNTER
             SERVICE_COUNTER_ROW,
-            #endif
+#endif
             DEBUG_BORDER_1,
             DEBUG_MESSAGE_ROW
         };
@@ -96,8 +91,9 @@ namespace LFAST
         void handleCliCommand();
         void resetPrompt();
         std::deque<std::string> debugMessages;
+
     public:
-        enum 
+        enum
         {
             INFO = 0,
             DEBUG = 1,
@@ -109,7 +105,7 @@ namespace LFAST
         void printMountStatusLabels();
         void serviceCLI();
         // void addDebugMessage(std::string&, uint8_t);
-        void addDebugMessage(std::string msg, uint8_t level = INFO);
+        void addDebugMessage(const std::string &msg, uint8_t level = INFO);
         // void clearDebugMessages();
     };
 
@@ -121,9 +117,6 @@ namespace LFAST
         uint32_t updatePrdUs;
         double localSiderealTime = 0.0;
 
-        double currentAzPosn = 0.0;
-        double currentAltPosn = 0.0;
-
         // double targetAzPosn = 0.0;
         // double targetAltPosn = 0.0;
 
@@ -131,13 +124,16 @@ namespace LFAST
         double AzPosnErr = 0.0;
 
         double azParkPosn = 0.0;
-        double altParkPosn = DEFAULT_ALT_PARK;
+        double altParkPosn = ALT_PARK_POSN_RAD;
 
         double targetRaPosn = 0.0;
         double targetDecPosn = 0.0;
 
         double altPosnCmd_rad = 0.0;
         double azPosnCmd_rad = 0.0;
+
+        double azPosnFb_rad = 0.0;
+        double altPosnFb_rad = 0.0;
 
         double azRateCmd_rps = 0.0;
         double altRateCmd_rps = 0.0;
@@ -148,7 +144,6 @@ namespace LFAST
         double localLatitude = DEFAULT_LATITUDE;
         double localLongitude = DEFAULT_LONGITUDE;
         double localElevation = DEFAULT_ELEVATION;
-
 
         double deltaTimeSec = 0.0;
 
@@ -161,6 +156,7 @@ namespace LFAST
             MOUNT_SLEWING,
             MOUNT_TRACKING,
             MOUNT_HOMING,
+            MOUNT_ERROR,
         };
 
         enum MountCommandEvent
@@ -180,7 +176,6 @@ namespace LFAST
         volatile DriveControl AltDriveControl;
         volatile DriveControl AzDriveControl;
 
-
         MountCommandEvent readEvent();
         MountStatus mountIdleHandler();
         MountStatus mountParkingHandler();
@@ -188,14 +183,16 @@ namespace LFAST
         MountStatus mountSlewingHandler();
         MountStatus mountHomingHandler();
         MountStatus mountTrackingHandler();
+        MountStatus mountErrorHandler();
+
         bool readyFlag;
         bool slewCompleteFlag;
-    public:
-    
-        static MountControl& getMountController();
 
-        MountControl(MountControl const&) = delete;
-        void operator=(MountControl const&) = delete;
+    public:
+        static MountControl &getMountController();
+
+        MountControl(MountControl const &) = delete;
+        void operator=(MountControl const &) = delete;
 
         MountControl_CLI cli;
         void initializeCLI();
@@ -270,7 +267,6 @@ namespace LFAST
         void getCurrentRaDec(double *ra, double *dec);
         void altAzToHADec(double alt, double az, double *ha, double *dec);
 
-        static std::string getClockStr(double lst);
         // double getCurrentAlt()
         // {
         //     return currentAltPosn - altOffset;
