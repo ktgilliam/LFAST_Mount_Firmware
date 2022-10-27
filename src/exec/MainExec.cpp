@@ -10,14 +10,14 @@
 
 #include <Arduino.h>
 #include <cctype>
-
-#include <heartbeat.h>
-#include <debug.h>
-#include <device.h>
-#include <NetComms.h>
 #include <cmath>
 
+#include <heartbeat.h>
+#include <device.h>
+#include <debug.h>
+#include <NetComms.h>
 #include <MountControl.h>
+#include <TerminalInterface.h>
 
 #define MOUNT_CONTROL_LABEL "LFAST MOUNT CONTROL"
 
