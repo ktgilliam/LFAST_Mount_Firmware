@@ -1,4 +1,7 @@
 
+
+#pragma once
+
 namespace KINKO
 {
     enum register_map_enum
@@ -88,7 +91,6 @@ namespace KINKO
         DISABLE_STOP_MODE = 0x3420,
         HALT_MODE = 0x3430,
         FAULT_STOP_MODE = 0x3440,
-        PROFILE_DEC = 0x4C00,
         QUICK_STOP_DEC = 0x3300,
     };
 

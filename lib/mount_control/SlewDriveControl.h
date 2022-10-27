@@ -4,8 +4,9 @@
 #include <string>
 // #include <vector>
 #include <map>
+#include <KincoDriver.h>
 
-class DriveControl
+class SlewDriveControl
 {
 public:
     typedef enum
@@ -16,10 +17,12 @@ public:
         CURRENT = 0b100
     } COMMAND_MODE;
 
-    DriveControl(std::string label);
-    virtual ~DriveControl() {}
+    SlewDriveControl(std::string label);
+    SlewDriveControl(std::string label, int16_t _driveIdA, int16_t _driveIdB);
 
-    void enableDrive() volatile {}
+    virtual ~SlewDriveControl() {}
+
+    void enableDrive() volatile;
     void disableDrive() volatile {}
     void setControlMode(COMMAND_MODE _mode) volatile { mode = _mode; }
     void setCurrentCommand() volatile {}
@@ -29,9 +32,10 @@ public:
     void getVelocityFeedback() volatile {}
     void getPositionFeedback() volatile {}
     void printLabel();
+
     static void configureLoopTimer(uint32_t);
     static void startLoopTimer();
-
+    void initializeServoDrivers(int16_t idA, int16_t idB) volatile;
 protected:
     std::string DriveLabel;
     bool enabled;
@@ -43,8 +47,15 @@ protected:
     double VelocityFeedback;
     double PositionFeedback;
     static void update_ISR();
-    static std::map<std::string, DriveControl *> Drives;
-    uint8_t DriveIndex;
+
+    int16_t driveIdA;
+    int16_t driveIdB;
+
+    // void initializeServoDriver(int16_t driveId) volatile;
+    static std::map<std::string, SlewDriveControl *> Drives;
+    // uint8_t DriveIndex;
+    KincoDriver *ptrDriveA;
+    KincoDriver *ptrDriveB;
 
 private:
     // uint32_t *DriveControlStructA;

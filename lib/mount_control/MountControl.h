@@ -1,11 +1,12 @@
 #pragma once
 
 #include <cinttypes>
-#include <DriveControl.h>
 #include <NetComms.h>
 #include <cliMacros.h>
 #include <queue>
 #include <TerminalInterface.h>
+#include <mountConfig.h>
+#include <SlewDriveControl.h>
 
 // #include <vector>
 
@@ -148,8 +149,8 @@ protected:
     std::queue<MountCommandEvent> mountCmdEvents;
     MountStatus mountStatus;
 
-    volatile DriveControl AltDriveControl;
-    volatile DriveControl AzDriveControl;
+    volatile SlewDriveControl AltDriveControl;
+    volatile SlewDriveControl AzDriveControl;
 
     MountCommandEvent readEvent();
     MountStatus mountIdleHandler();
@@ -164,6 +165,7 @@ protected:
     bool slewCompleteFlag;
 
     void updateStatusFields();
+
 public:
     static MountControl &getMountController();
 

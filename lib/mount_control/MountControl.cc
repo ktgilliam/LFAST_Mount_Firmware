@@ -5,13 +5,10 @@
 #include <TimerThree.h>
 #include <iomanip>
 
-#include <DriveControl.h>
 #include <NetComms.h>
 #include <mathFuncs.h>
-// #include <device.h>
-// #include <debug.h>
 #include <stdio.h>
-
+#include <SlewDriveControl.h>
 #include <TerminalInterface.h>
 
 const std::string SLEW_COMPLETE_MSG_STR = "Slew is complete.";
@@ -24,9 +21,12 @@ MountControl::MountControl()
 #if SIM_SCOPE_ENABLED
     initSimMount();
 #endif
-    DriveControl::configureLoopTimer(DEFAULT_SERVO_PRD);
-    DriveControl::startLoopTimer();
+    SlewDriveControl::configureLoopTimer(DEFAULT_SERVO_PRD);
+    SlewDriveControl::startLoopTimer();
     readyFlag = false;
+
+    AzDriveControl.initializeServoDrivers(AZ_SERVO_DRIVE_ID_A, AZ_SERVO_DRIVE_ID_B);
+    AltDriveControl.initializeServoDrivers(ALT_SERVO_DRIVE_ID_A, ALT_SERVO_DRIVE_ID_B);
 }
 
 MountControl &MountControl::getMountController()
@@ -366,7 +366,7 @@ MountControl::mountHomingHandler()
 
     altPosnCmd_rad = 0.0;
     azPosnCmd_rad = 0.0;
-    AltDriveControl.setControlMode(DriveControl::VELOCITY);
+    AltDriveControl.setControlMode(SlewDriveControl::VELOCITY);
     altRateCmd_rps = -1 * MAX_SLEW_RATE_RPS;
     azRateCmd_rps = -1 * MAX_SLEW_RATE_RPS;
     // TODO: upon finding limit switch, back up, slow down, and bump it one more time.
