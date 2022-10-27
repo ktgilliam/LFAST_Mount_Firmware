@@ -19,7 +19,7 @@
 
 #include <MountControl.h>
 
-
+#define MOUNT_CONTROL_LABEL "LFAST MOUNT CONTROL"
 
 #define DEFAULT_MOUNT_UPDATE_PRD 5000 // Microseconds
 
@@ -50,6 +50,7 @@ void findHome(double lst);
 
 LFAST::EthernetCommsService *commsService;
 MountControl *mountControlPtr;
+TerminalInterface *mcIf;
 
 unsigned int mPort = 4400;
 byte myIp[] {192, 168, 121, 177};
@@ -119,8 +120,13 @@ void setup(void)
 
     MountControl &mountControl = MountControl::getMountController();
     mountControl.setUpdatePeriod(DEFAULT_MOUNT_UPDATE_PRD);
+
+    mcIf = new TerminalInterface(MOUNT_CONTROL_LABEL, &(TEST_SERIAL));
+    mountControl.connectTerminalInterface(mcIf);
+
     std::string msg = "Initialization complete";
-    mountControl.cli.addDebugMessage(msg);
+    mcIf->addDebugMessage(msg);
+    // while(1);
 }
 
 void loop(void)
@@ -132,7 +138,7 @@ void loop(void)
 
     MountControl &mountControl = MountControl::getMountController();
     mountControl.serviceCLI();
-    // mountControl.cli.printDebugMessages();
+    // mcIf->printDebugMessages();
 }
 
 void handshake(unsigned int val)
@@ -142,9 +148,8 @@ void handshake(unsigned int val)
     {
         newMsg.addKeyValuePair<unsigned int>("Handshake", 0xBEEF);
         commsService->sendMessage(newMsg, LFAST::CommsService::ACTIVE_CONNECTION);
-        MountControl &mountControl = MountControl::getMountController();
         std::string msg = "Connected to client.";
-        mountControl.cli.addDebugMessage(msg);
+        mcIf->addDebugMessage(msg);
     }
     else
     {
@@ -246,9 +251,9 @@ void sendParkedStatus(double lst)
     MountControl &mountControl = MountControl::getMountController();
     bool isParked = mountControl.mountIsParked();
     // if (isParked)
-    //     mountControl.cli.addDebugMessage("Park Status Requested (1).");
+    //     mcIf->addDebugMessage("Park Status Requested (1).");
     // else
-    //     mountControl.cli.addDebugMessage("Park Status Requested (0).");
+    //     mcIf->addDebugMessage("Park Status Requested (0).");
 #if SIM_SCOPE_ENABLED
     mountControl.updateClock(lst);
 #endif
