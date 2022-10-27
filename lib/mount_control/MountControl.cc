@@ -536,9 +536,9 @@ void MountControl::updateSimMount()
 void MountControl::connectTerminalInterface(TerminalInterface *_cli)
 {
     cli = _cli;
-    setupTerminalInterface();
+    setupPersistentFields();
 }
-void MountControl::setupTerminalInterface()
+void MountControl::setupPersistentFields()
 {
 
     // cli->updateStringPersistentFieldf("\033[32m");

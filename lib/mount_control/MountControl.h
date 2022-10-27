@@ -234,7 +234,7 @@ public:
     // void setTargetAltAz(double alt, double az);
 
     void connectTerminalInterface(TerminalInterface* _cli);
-    void setupTerminalInterface();
+    void setupPersistentFields();
     void serviceCLI();
     void abortSlew();
 
@@ -250,8 +250,6 @@ public:
     //     return currentAzPosn - azOffset;
     // }
     double getTrackRate();
-
-    friend class TerminalInterface;
 };
 
 void updateMountControl_ISR();

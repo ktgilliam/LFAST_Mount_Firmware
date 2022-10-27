@@ -124,8 +124,7 @@ void setup(void)
     mcIf = new TerminalInterface(MOUNT_CONTROL_LABEL, &(TEST_SERIAL));
     mountControl.connectTerminalInterface(mcIf);
 
-    std::string msg = "Initialization complete";
-    mcIf->addDebugMessage(msg);
+    mcIf->addDebugMessage("Initialization complete");
     // while(1);
 }
 
