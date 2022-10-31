@@ -336,11 +336,14 @@ MountControl::mountParkingHandler()
     bool parkingComplete = getSlewingRateCommands(&altRateCmd_rps, &azRateCmd_rps);
     if (parkingComplete)
     {
+        altRateCmd_rps = 0.0;
+        azRateCmd_rps = 0.0;
+        AltDriveControl.setControlMode(SlewDriveControl::DISABLED);
+        AzDriveControl.setControlMode(SlewDriveControl::DISABLED);
         return MOUNT_PARKED;
     }
     else
     {
-
         return MOUNT_PARKING;
     }
 }
@@ -352,9 +355,15 @@ MountControl::mountParkedHandler()
     azRateCmd_rps = 0.0;
     MountCommandEvent cmdEvent = readEvent();
     if (cmdEvent == UNPARK_COMMAND_RECEIVED)
+    {
+        AltDriveControl.setControlMode(SlewDriveControl::VELOCITY);
+        AzDriveControl.setControlMode(SlewDriveControl::VELOCITY);
         return MOUNT_IDLE;
+    }
     else
+    {
         return MOUNT_PARKED;
+    }
 }
 
 MountControl::MountStatus
@@ -375,6 +384,8 @@ MountControl::mountHomingHandler()
     {
         altRateCmd_rps = 0.0;
         azRateCmd_rps = 0.0;
+        AltDriveControl.setControlMode(SlewDriveControl::DISABLED);
+        AzDriveControl.setControlMode(SlewDriveControl::DISABLED);
         return MOUNT_IDLE;
     }
     else
@@ -497,6 +508,12 @@ void MountControl::setGuiderOffset(uint8_t axis, double rate)
         decGuiderOffset = 0.0;
         cli->addDebugMessage("Invalid guide axis", LFAST::WARNING);
     }
+}
+
+void MountControl::updateSlewDriveCommands()
+{
+    AzDriveControl.setVelocityCommand(RPM2radpersec(azRateCmd_rps));
+    AltDriveControl.setVelocityCommand(RPM2radpersec(altRateCmd_rps));
 }
 
 void MountControl::updateSimMount()

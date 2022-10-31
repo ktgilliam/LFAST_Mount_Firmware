@@ -15,10 +15,10 @@ public:
     virtual void setControlMode(uint16_t) = 0;
     virtual void getControlMode() = 0;
 
-    virtual void updateVelocityCommand(int32_t);
-    virtual void updateTorqueCommand(int32_t);
+    virtual void updateVelocityCommand(double) = 0;
+    virtual void updateTorqueCommand(double) = 0;
 
-    virtual int32_t getVelocityFeedback();
-    virtual int32_t getCurrentFeedback();
-    virtual int32_t getPositionFeedback();
+    virtual double getVelocityFeedback() = 0;
+    virtual double getCurrentFeedback() = 0;
+    virtual double getPositionFeedback() = 0;
 };

@@ -9,8 +9,8 @@
 
 uint16_t KincoDriver::numDrivers = 0;
 
-int32_t convertSpeedIUtoRPM(int32_t speed_units);
-int32_t convertCurrIUtoAmp(int32_t current_units);
+double convertSpeedIUtoRPM(int32_t speed_units);
+double convertCurrIUtoAmp(int32_t current_units);
 int32_t convertSpeedRPMtoIU(int16_t speed_rpm);
 
 KincoDriver::KincoDriver(int16_t driverId)
@@ -94,61 +94,53 @@ void KincoDriver::setControlMode(uint16_t motor_mode)
     writeDriverRegister<uint16_t>(KINKO::OPERATION_MODE, motor_mode);
 }
 
-void KincoDriver::updateVelocityCommand(int32_t velocity_setpoint)
+void KincoDriver::updateVelocityCommand(double velocity_setpoint)
 {
     int32_t target_speed_value = convertSpeedRPMtoIU(velocity_setpoint);
     writeDriverRegister<int32_t>(KINKO::TARGET_SPEED, target_speed_value);
 }
 
-void KincoDriver::updateTorqueCommand(int32_t torque_setpoint)
+void KincoDriver::updateTorqueCommand(double torque_setpoint)
 {
     writeDriverRegister<int32_t>(KINKO::TARGET_TORQUE, torque_setpoint);
 }
 
-int32_t KincoDriver::getVelocityFeedback()
+double KincoDriver::getVelocityFeedback()
 {
+    // int32_t real_speed_units = readDriverRegister(KINKO::REAL_SPEED);
     auto real_speed_units = readDriverRegister<int32_t>(KINKO::REAL_SPEED);
     auto real_speed_rpm = convertSpeedIUtoRPM(real_speed_units);
     return real_speed_rpm;
 }
 
-int32_t KincoDriver::getCurrentFeedback()
+double KincoDriver::getCurrentFeedback()
 {
     auto real_current_units = readDriverRegister<int32_t>(KINKO::REAL_CURRENT);
     int32_t real_current_amps = convertCurrIUtoAmp(real_current_units);
     return real_current_amps;
 }
 
-int32_t KincoDriver::getPositionFeedback()
+double KincoDriver::getPositionFeedback()
 {
     auto encoder_counts = readDriverRegister<int32_t>(KINKO::POS_ACTUAL);
     return encoder_counts;
 }
 
-int32_t convertSpeedIUtoRPM(int32_t speed_units)
+double convertSpeedIUtoRPM(int32_t speed_units)
 {
-    int32_t speed_rpm = 0;
-    double holder = 0;
-    holder = (((double)speed_units * 1875) / (512 * 10000));
-    speed_rpm = (int32_t)holder;
-    return speed_rpm;
+    return (((double)speed_units * 1875) / (512 * 10000));
 }
 
-int32_t convertCurrIUtoAmp(int32_t current_units)
+double convertCurrIUtoAmp(int32_t current_units)
 {
-    int32_t current_amps = 0;
-    double holder = 0;
-    holder = (double)current_units / KINKO::current_conversion_factor;
-    holder *= 100;
-    current_amps = (int32_t)holder;
-    return current_amps;
+    return (double)current_units / KINKO::amps2counts * 100.0;
 }
 
 int32_t convertSpeedRPMtoIU(int16_t speed_rpm)
 {
     int32_t speed_units = 0;
     double holder = 0;
-    holder = (double)speed_rpm * KINKO::velocity_conversion_factor;
+    holder = (double)speed_rpm * KINKO::rpm2cps;
     speed_units = (int32_t)holder;
     return speed_units;
 }

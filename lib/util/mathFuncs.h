@@ -86,3 +86,15 @@ inline double rad2arcsec(T val)
 {
     return val * 3600.0 * 180.0 * INV_PI;
 }
+
+template <typename T>
+inline double radpersec2RPM(T val)
+{
+    return val * 30.0 * INV_PI;
+}
+
+template <typename T>
+inline double RPM2radpersec(T val)
+{
+    return val * 30.0 * INV_PI;
+}

@@ -23,10 +23,10 @@ public:
     virtual ~SlewDriveControl() {}
 
     void enableDrive() volatile;
-    void disableDrive() volatile {}
+    void disableDrive() volatile;
     void setControlMode(COMMAND_MODE _mode) volatile { mode = _mode; }
     void setCurrentCommand() volatile {}
-    void setVelocityCommand() volatile {}
+    void setVelocityCommand(double cmdRPM) volatile;
     void setPositionCommand() volatile {}
     void getCurrentFeedback() volatile {}
     void getVelocityFeedback() volatile {}

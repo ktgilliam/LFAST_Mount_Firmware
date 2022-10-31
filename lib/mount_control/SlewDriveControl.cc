@@ -38,7 +38,6 @@ void SlewDriveControl::initializeServoDrivers(int16_t idA, int16_t idB) volatile
     ptrDriveB = new KincoDriver(driveIdB);
 }
 
-
 void SlewDriveControl::update_ISR()
 {
     for (const auto &m : Drives)
@@ -70,5 +69,19 @@ void SlewDriveControl::printLabel()
 
 void SlewDriveControl::enableDrive() volatile
 {
+    this->mode = VELOCITY;
+    ptrDriveA->setControlMode(VELOCITY);
+    ptrDriveB->setControlMode(VELOCITY);
+}
+void SlewDriveControl::disableDrive() volatile
+{
+    this->mode = DISABLED;
+    ptrDriveA->setControlMode(DISABLED);
+    ptrDriveB->setControlMode(DISABLED);
 }
 
+void SlewDriveControl::setVelocityCommand(double cmdRPM) volatile
+{
+    ptrDriveA->updateVelocityCommand(cmdRPM);
+    ptrDriveB->updateVelocityCommand(cmdRPM);
+}

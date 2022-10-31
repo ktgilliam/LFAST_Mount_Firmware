@@ -121,6 +121,11 @@ private:
     double raGuiderOffset = 0.0;
     double decGuiderOffset = 0.0;
     
+    double cos_ha = 1.0;
+    double sin_ha = 0.0;
+    double cos_dec = 1.0;
+    double sin_dec = 0.0;
+
     TerminalInterface *cli = nullptr;
 
 protected:
@@ -177,6 +182,8 @@ public:
     void initSimMount();
     void updateSimMount();
 #endif
+
+    void updateSlewDriveCommands();
     void setUpdatePeriod(uint32_t prd);
 
     void setLatitude(double lat)

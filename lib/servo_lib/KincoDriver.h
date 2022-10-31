@@ -12,8 +12,8 @@
 namespace KINKO
 {
     const int drive_i_peak = 36;
-    const double current_conversion_factor = (2048.0 / drive_i_peak) / 1.414;
-    const double velocity_conversion_factor =  512 * 10000.0 / 1875;
+    const double amps2counts = (2048.0 / drive_i_peak) / 1.414;
+    const double rpm2cps =  512 * 10000.0 / 1875;
 }
 class KincoDriver : ServoInterface
 {
@@ -22,8 +22,10 @@ private:
 
 protected:
     int16_t driverNodeId;
+
     template <typename T>
     T readDriverRegister(uint16_t modBusAddr);
+    
     template <typename T>
     uint16_t writeDriverRegister(uint16_t modBusAddr, T reg_value);
 
@@ -36,12 +38,12 @@ public:
     void setControlMode(uint16_t) override;
     void getControlMode() override {};
 
-    void updateVelocityCommand(int32_t) override;
-    void updateTorqueCommand(int32_t) override;
+    void updateVelocityCommand(double) override;
+    void updateTorqueCommand(double) override;
 
-    int32_t getVelocityFeedback() override;
-    int32_t getCurrentFeedback() override;
-    int32_t getPositionFeedback() override;
+    double getVelocityFeedback() override;
+    double getCurrentFeedback() override;
+    double getPositionFeedback() override;
 
     // void test_show_drive_struc();
 };
