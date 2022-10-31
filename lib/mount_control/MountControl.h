@@ -1,11 +1,12 @@
 #pragma once
 
 #include <cinttypes>
-#include <DriveControl.h>
 #include <NetComms.h>
 #include <cliMacros.h>
 #include <queue>
 #include <TerminalInterface.h>
+#include <mountConfig.h>
+#include <SlewDriveControl.h>
 
 // #include <vector>
 
@@ -120,6 +121,11 @@ private:
     double raGuiderOffset = 0.0;
     double decGuiderOffset = 0.0;
     
+    double cos_ha = 1.0;
+    double sin_ha = 0.0;
+    double cos_dec = 1.0;
+    double sin_dec = 0.0;
+
     TerminalInterface *cli = nullptr;
 
 protected:
@@ -148,8 +154,8 @@ protected:
     std::queue<MountCommandEvent> mountCmdEvents;
     MountStatus mountStatus;
 
-    volatile DriveControl AltDriveControl;
-    volatile DriveControl AzDriveControl;
+    volatile SlewDriveControl AltDriveControl;
+    volatile SlewDriveControl AzDriveControl;
 
     MountCommandEvent readEvent();
     MountStatus mountIdleHandler();
@@ -164,6 +170,7 @@ protected:
     bool slewCompleteFlag;
 
     void updateStatusFields();
+
 public:
     static MountControl &getMountController();
 
@@ -175,6 +182,8 @@ public:
     void initSimMount();
     void updateSimMount();
 #endif
+
+    void updateSlewDriveCommands();
     void setUpdatePeriod(uint32_t prd);
 
     void setLatitude(double lat)
@@ -234,7 +243,7 @@ public:
     // void setTargetAltAz(double alt, double az);
 
     void connectTerminalInterface(TerminalInterface* _cli);
-    void setupTerminalInterface();
+    void setupPersistentFields();
     void serviceCLI();
     void abortSlew();
 
@@ -250,8 +259,6 @@ public:
     //     return currentAzPosn - azOffset;
     // }
     double getTrackRate();
-
-    friend class TerminalInterface;
 };
 
 void updateMountControl_ISR();

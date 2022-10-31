@@ -5,13 +5,10 @@
 #include <TimerThree.h>
 #include <iomanip>
 
-#include <DriveControl.h>
 #include <NetComms.h>
 #include <mathFuncs.h>
-// #include <device.h>
-// #include <debug.h>
 #include <stdio.h>
-
+#include <SlewDriveControl.h>
 #include <TerminalInterface.h>
 
 const std::string SLEW_COMPLETE_MSG_STR = "Slew is complete.";
@@ -24,9 +21,12 @@ MountControl::MountControl()
 #if SIM_SCOPE_ENABLED
     initSimMount();
 #endif
-    DriveControl::configureLoopTimer(DEFAULT_SERVO_PRD);
-    DriveControl::startLoopTimer();
+    SlewDriveControl::configureLoopTimer(DEFAULT_SERVO_PRD);
+    SlewDriveControl::startLoopTimer();
     readyFlag = false;
+
+    AzDriveControl.initializeServoDrivers(AZ_SERVO_DRIVE_ID_A, AZ_SERVO_DRIVE_ID_B);
+    AltDriveControl.initializeServoDrivers(ALT_SERVO_DRIVE_ID_A, ALT_SERVO_DRIVE_ID_B);
 }
 
 MountControl &MountControl::getMountController()
@@ -336,11 +336,14 @@ MountControl::mountParkingHandler()
     bool parkingComplete = getSlewingRateCommands(&altRateCmd_rps, &azRateCmd_rps);
     if (parkingComplete)
     {
+        altRateCmd_rps = 0.0;
+        azRateCmd_rps = 0.0;
+        AltDriveControl.setControlMode(SlewDriveControl::DISABLED);
+        AzDriveControl.setControlMode(SlewDriveControl::DISABLED);
         return MOUNT_PARKED;
     }
     else
     {
-
         return MOUNT_PARKING;
     }
 }
@@ -352,9 +355,15 @@ MountControl::mountParkedHandler()
     azRateCmd_rps = 0.0;
     MountCommandEvent cmdEvent = readEvent();
     if (cmdEvent == UNPARK_COMMAND_RECEIVED)
+    {
+        AltDriveControl.setControlMode(SlewDriveControl::VELOCITY);
+        AzDriveControl.setControlMode(SlewDriveControl::VELOCITY);
         return MOUNT_IDLE;
+    }
     else
+    {
         return MOUNT_PARKED;
+    }
 }
 
 MountControl::MountStatus
@@ -366,7 +375,7 @@ MountControl::mountHomingHandler()
 
     altPosnCmd_rad = 0.0;
     azPosnCmd_rad = 0.0;
-    AltDriveControl.setControlMode(DriveControl::VELOCITY);
+    AltDriveControl.setControlMode(SlewDriveControl::VELOCITY);
     altRateCmd_rps = -1 * MAX_SLEW_RATE_RPS;
     azRateCmd_rps = -1 * MAX_SLEW_RATE_RPS;
     // TODO: upon finding limit switch, back up, slow down, and bump it one more time.
@@ -375,6 +384,8 @@ MountControl::mountHomingHandler()
     {
         altRateCmd_rps = 0.0;
         azRateCmd_rps = 0.0;
+        AltDriveControl.setControlMode(SlewDriveControl::DISABLED);
+        AzDriveControl.setControlMode(SlewDriveControl::DISABLED);
         return MOUNT_IDLE;
     }
     else
@@ -499,6 +510,12 @@ void MountControl::setGuiderOffset(uint8_t axis, double rate)
     }
 }
 
+void MountControl::updateSlewDriveCommands()
+{
+    AzDriveControl.setVelocityCommand(RPM2radpersec(azRateCmd_rps));
+    AltDriveControl.setVelocityCommand(RPM2radpersec(altRateCmd_rps));
+}
+
 void MountControl::updateSimMount()
 {
     static bool firstTime = true;
@@ -536,9 +553,9 @@ void MountControl::updateSimMount()
 void MountControl::connectTerminalInterface(TerminalInterface *_cli)
 {
     cli = _cli;
-    setupTerminalInterface();
+    setupPersistentFields();
 }
-void MountControl::setupTerminalInterface()
+void MountControl::setupPersistentFields()
 {
 
     // cli->updateStringPersistentFieldf("\033[32m");

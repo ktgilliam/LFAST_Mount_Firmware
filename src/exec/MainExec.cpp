@@ -48,7 +48,7 @@ void syncRaPosition(double currentRaPosn);
 void syncDecPosition(double currentDecPosn);
 void findHome(double lst);
 
-LFAST::EthernetCommsService *commsService;
+LFAST::TcpCommsService *commsService;
 MountControl *mountControlPtr;
 TerminalInterface *mcIf;
 
@@ -78,8 +78,10 @@ void deviceSetup()
 void setup(void)
 {
     deviceSetup();
-    commsService = new LFAST::EthernetCommsService(myIp, mPort);
-    // commsService = new LFAST::EthernetCommsService();
+    commsService = new LFAST::TcpCommsService(myIp);
+    // commsService = new LFAST::TcpCommsService();
+    commsService->initializeEnetIface(mPort);
+
     if (!commsService->Status())
     {
         TEST_SERIAL.println("Device Setup Failed.");
@@ -89,7 +91,6 @@ void setup(void)
             ;
         }
     }
-
     commsService->registerMessageHandler<bool>("RequestLatLonAlt", getLocalCoordinates);
     commsService->registerMessageHandler<unsigned int>("Handshake", handshake);
     commsService->registerMessageHandler<double>("time", updateTime);
@@ -124,8 +125,7 @@ void setup(void)
     mcIf = new TerminalInterface(MOUNT_CONTROL_LABEL, &(TEST_SERIAL));
     mountControl.connectTerminalInterface(mcIf);
 
-    std::string msg = "Initialization complete";
-    mcIf->addDebugMessage(msg);
+    mcIf->addDebugMessage("Initialization complete");
     // while(1);
 }
 
