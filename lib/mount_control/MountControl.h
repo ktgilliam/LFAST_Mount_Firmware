@@ -1,7 +1,7 @@
 #pragma once
 
 #include <cinttypes>
-#include <NetComms.h>
+#include <TcpCommsService.h>
 #include <cliMacros.h>
 #include <queue>
 #include <TerminalInterface.h>
