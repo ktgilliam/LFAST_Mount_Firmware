@@ -15,7 +15,7 @@
 #include <heartbeat.h>
 #include <device.h>
 #include <debug.h>
-#include <NetComms.h>
+#include <TcpCommsService.h>
 #include <MountControl.h>
 #include <TerminalInterface.h>
 
@@ -133,7 +133,7 @@ void loop(void)
 {
     commsService->checkForNewClients();
     commsService->checkForNewClientData();
-    commsService->processClientData();
+    commsService->processClientData("MountMessage");
     commsService->stopDisconnectedClients();
 
     MountControl &mountControl = MountControl::getMountController();
