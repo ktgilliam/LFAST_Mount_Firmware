@@ -71,7 +71,8 @@ void SlewDriveControl::enableDrive() volatile
 {
     this->mode = VELOCITY;
     ptrDriveA->setControlMode(VELOCITY);
-    ptrDriveB->setControlMode(VELOCITY);
+    // ptrDriveB->setControlMode(VELOCITY);
+    ptrDriveB->setControlMode(TORQUE);
 }
 void SlewDriveControl::disableDrive() volatile
 {

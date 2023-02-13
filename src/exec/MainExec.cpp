@@ -13,8 +13,8 @@
 #include <cmath>
 
 #include <heartbeat.h>
-#include <device.h>
 #include <debug.h>
+#include "teensy41_device.h"
 #include <TcpCommsService.h>
 #include <MountControl.h>
 #include <TerminalInterface.h>
@@ -50,7 +50,7 @@ void findHome(double lst);
 
 LFAST::TcpCommsService *commsService;
 MountControl *mountControlPtr;
-TerminalInterface *mcIf;
+TerminalInterface *cli;
 
 unsigned int mPort = 4400;
 byte myIp[] {192, 168, 121, 177};
@@ -62,7 +62,7 @@ byte myIp[] {192, 168, 121, 177};
 void deviceSetup()
 {
     pinMode(LED_PIN, OUTPUT);
-    pinMode(MODE_PIN, INPUT);
+    // pinMode(MODE_PIN, INPUT);
     pinMode(DEBUG_PIN_1, OUTPUT);
     pinMode(TEST_SERIAL_TX_PIN, OUTPUT);
 
@@ -122,10 +122,10 @@ void setup(void)
     MountControl &mountControl = MountControl::getMountController();
     mountControl.setUpdatePeriod(DEFAULT_MOUNT_UPDATE_PRD);
 
-    mcIf = new TerminalInterface(MOUNT_CONTROL_LABEL, &(TEST_SERIAL));
-    mountControl.connectTerminalInterface(mcIf);
+    cli = new TerminalInterface(MOUNT_CONTROL_LABEL, &(TEST_SERIAL), TEST_SERIAL_BAUD);
+    mountControl.connectTerminalInterface(cli, "mount");
 
-    mcIf->addDebugMessage("Initialization complete");
+    cli->printDebugMessage("Initialization complete");
     // while(1);
 }
 
@@ -138,7 +138,7 @@ void loop(void)
 
     MountControl &mountControl = MountControl::getMountController();
     mountControl.serviceCLI();
-    // mcIf->printDebugMessages();
+    // cli->printDebugMessages();
 }
 
 void handshake(unsigned int val)
@@ -149,7 +149,7 @@ void handshake(unsigned int val)
         newMsg.addKeyValuePair<unsigned int>("Handshake", 0xBEEF);
         commsService->sendMessage(newMsg, LFAST::CommsService::ACTIVE_CONNECTION);
         std::string msg = "Connected to client.";
-        mcIf->addDebugMessage(msg);
+        cli->printDebugMessage(msg);
     }
     else
     {
@@ -251,9 +251,9 @@ void sendParkedStatus(double lst)
     MountControl &mountControl = MountControl::getMountController();
     bool isParked = mountControl.mountIsParked();
     // if (isParked)
-    //     mcIf->addDebugMessage("Park Status Requested (1).");
+    //     cli->printDebugMessage("Park Status Requested (1).");
     // else
-    //     mcIf->addDebugMessage("Park Status Requested (0).");
+    //     cli->printDebugMessage("Park Status Requested (0).");
 #if SIM_SCOPE_ENABLED
     mountControl.updateClock(lst);
 #endif

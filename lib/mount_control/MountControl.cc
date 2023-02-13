@@ -10,6 +10,7 @@
 #include <stdio.h>
 #include <SlewDriveControl.h>
 #include <TerminalInterface.h>
+#include "teensy41_device.h"
 
 const std::string SLEW_COMPLETE_MSG_STR = "Slew is complete.";
 const std::string GOTO_WHILE_PARKED_MSG_STR = "Received Goto command while parked.";
@@ -74,14 +75,14 @@ void MountControl::findHome()
 void MountControl::park()
 {
     std::string msg = "Received park Command.";
-    cli->addDebugMessage(msg);
+    cli->printDebugMessage(msg);
     mountCmdEvents.push(PARK_COMMAND_RECEIVED);
 }
 
 void MountControl::unpark()
 {
     std::string msg = "Received unpark Command.";
-    cli->addDebugMessage(msg);
+    cli->printDebugMessage(msg);
     mountCmdEvents.push(UNPARK_COMMAND_RECEIVED);
 }
 
@@ -183,7 +184,7 @@ void MountControl::updateTargetRaDec(double ra, double dec)
     targetDecPosn = dec;
     char dbgMsg[50];
     sprintf(dbgMsg, "Received Goto Command: [%6.4f ; %6.4f]", ra, dec);
-    cli->addDebugMessage(std::string(dbgMsg), LFAST::WARNING);
+    cli->printDebugMessage(std::string(dbgMsg), LFAST::WARNING);
 
     mountCmdEvents.push(GOTO_COMMAND_RECEIVED);
 }
@@ -203,7 +204,7 @@ double MountControl::getTrackRate()
 
 void MountControl::abortSlew()
 {
-    cli->addDebugMessage(ABORT_COMMAND_MSG_STR, LFAST::WARNING);
+    cli->printDebugMessage(ABORT_COMMAND_MSG_STR, LFAST::WARNING);
     altPosnCmd_rad = altPosnFb_rad;
     azPosnCmd_rad = azPosnFb_rad;
     azRateCmd_rps = 0.0;
@@ -410,7 +411,7 @@ MountControl::mountSlewingHandler()
     bool slewComplete = getSlewingRateCommands(&altRateCmd_rps, &azRateCmd_rps);
     if (slewComplete)
     {
-        cli->addDebugMessage(SLEW_COMPLETE_MSG_STR, LFAST::INFO);
+        cli->printDebugMessage(SLEW_COMPLETE_MSG_STR, LFAST::INFO);
         slewCompleteFlag = true;
         getTrackingRateCommands(&altRateCmd_rps, &azRateCmd_rps);
         return MOUNT_TRACKING;
@@ -458,7 +459,7 @@ MountControl::mountErrorHandler()
     static bool printedErrorMsg = false;
     if (!printedErrorMsg)
     {
-        cli->addDebugMessage("Mount Stopped (Invalid command received).", LFAST::ERROR);
+        cli->printDebugMessage("Mount Stopped (Invalid command received).", LFAST::ERROR);
         printedErrorMsg = true;
     }
     switch (cmdEvent)
@@ -490,7 +491,7 @@ MountControl::mountErrorHandler()
 
 void MountControl::getLocalCoordinates(double *lat, double *lon, double *alt)
 {
-    cli->addDebugMessage("Coordinate request received.");
+    cli->printDebugMessage("Coordinate request received.");
     *lat = localLatitude;
     *lon = localLongitude;
     *alt = 0.0;
@@ -506,7 +507,7 @@ void MountControl::setGuiderOffset(uint8_t axis, double rate)
     {
         raGuiderOffset = 0.0;
         decGuiderOffset = 0.0;
-        cli->addDebugMessage("Invalid guide axis", LFAST::WARNING);
+        cli->printDebugMessage("Invalid guide axis", LFAST::WARNING);
     }
 }
 
@@ -550,11 +551,7 @@ void MountControl::updateSimMount()
     else if (azPosnFb_rad < 0)
         azPosnFb_rad += (TWO_PI);
 }
-void MountControl::connectTerminalInterface(TerminalInterface *_cli)
-{
-    cli = _cli;
-    setupPersistentFields();
-}
+
 void MountControl::setupPersistentFields()
 {
 
@@ -564,25 +561,25 @@ void MountControl::setupPersistentFields()
     if (cli == nullptr)
         return;
 
-    cli->addPersistentField("Mount Status", MOUNT_STATUS_ROW);
+    cli->addPersistentField(this->DeviceName, "Mount Status", MOUNT_STATUS_ROW);
 
-    cli->addPersistentField("Local Sidereal Time", SIDEREAL_TIME_ROW);
+    cli->addPersistentField(this->DeviceName, "Local Sidereal Time", SIDEREAL_TIME_ROW);
 
-    cli->addPersistentField("Target RA  (hh:mm:ss)", COMMAND_RA_ROW);
+    cli->addPersistentField(this->DeviceName, "Target RA  (hh:mm:ss)", COMMAND_RA_ROW);
 
-    cli->addPersistentField("Target DEC  (hh:mm:ss)", COMMAND_DEC_ROW);
+    cli->addPersistentField(this->DeviceName, "Target DEC  (hh:mm:ss)", COMMAND_DEC_ROW);
 
-    cli->addPersistentField("Current Altitude", CURRENT_ALT_ROW);
+    cli->addPersistentField(this->DeviceName, "Current Altitude", CURRENT_ALT_ROW);
 
-    cli->addPersistentField("Target Altitude", TARGET_ALT_ROW);
+    cli->addPersistentField(this->DeviceName, "Target Altitude", TARGET_ALT_ROW);
 
-    cli->addPersistentField("Altitude error", ALT_ERR_ROW);
+    cli->addPersistentField(this->DeviceName, "Altitude error", ALT_ERR_ROW);
 
-    cli->addPersistentField("Altitude Rate", ALT_RATE_ROW);
+    cli->addPersistentField(this->DeviceName, "Altitude Rate", ALT_RATE_ROW);
 
-    cli->addPersistentField("Current Azimuth", CURRENT_AZ_ROW);
+    cli->addPersistentField(this->DeviceName, "Current Azimuth", CURRENT_AZ_ROW);
 
-    cli->addPersistentField("Target Azimuth", TARGET_AZ_ROW);
+    cli->addPersistentField(this->DeviceName, "Target Azimuth", TARGET_AZ_ROW);
 
     cli->addPersistentField("Azimuth error", AZ_ERR_ROW);
 
@@ -610,27 +607,27 @@ void MountControl::updateStatusFields()
     {
     case MountControl::MOUNT_IDLE:
         cli->white();
-        cli->updatePersistentField(MOUNT_STATUS_ROW, "IDLE");
+        cli->updatePersistentField(DeviceName, MOUNT_STATUS_ROW, "IDLE");
         break;
     case MountControl::MOUNT_PARKING:
         cli->yellow();
-        cli->updatePersistentField(MOUNT_STATUS_ROW, "PARKING");
+        cli->updatePersistentField(DeviceName, MOUNT_STATUS_ROW, "PARKING");
         break;
     case MountControl::MOUNT_HOMING:
         cli->yellow();
-        cli->updatePersistentField(MOUNT_STATUS_ROW, "HOMING");
+        cli->updatePersistentField(DeviceName, MOUNT_STATUS_ROW, "HOMING");
         break;
     case MountControl::MOUNT_SLEWING:
         cli->magenta();
-        cli->updatePersistentField(MOUNT_STATUS_ROW, "SLEWING");
+        cli->updatePersistentField(DeviceName, MOUNT_STATUS_ROW, "SLEWING");
         break;
     case MountControl::MOUNT_PARKED:
         cli->cyan();
-        cli->updatePersistentField(MOUNT_STATUS_ROW, "PARKED");
+        cli->updatePersistentField(DeviceName, MOUNT_STATUS_ROW, "PARKED");
         break;
     case MountControl::MOUNT_TRACKING:
         cli->green();
-        cli->updatePersistentField(MOUNT_STATUS_ROW, "TRACKING");
+        cli->updatePersistentField(DeviceName, MOUNT_STATUS_ROW, "TRACKING");
         break;
     case MountControl::MOUNT_ERROR:
         cli->red();
@@ -643,17 +640,17 @@ void MountControl::updateStatusFields()
 
     char lstBuff[LFAST::MAX_CLOCKBUFF_LEN];
     fs_sexa(lstBuff, localSiderealTime, 2, 3600);
-    cli->updatePersistentField(SIDEREAL_TIME_ROW, lstBuff);
+    cli->updatePersistentField(DeviceName, SIDEREAL_TIME_ROW, lstBuff);
 
     // Print target RA:
     char raBuff[LFAST::MAX_CLOCKBUFF_LEN];
     fs_sexa(raBuff, targetRaPosn, 2, 3600);
-    cli->updatePersistentField(COMMAND_RA_ROW, raBuff);
+    cli->updatePersistentField(DeviceName, COMMAND_RA_ROW, raBuff);
 
     // Print target DEC:
     char decBuff[LFAST::MAX_CLOCKBUFF_LEN];
     fs_sexa(decBuff, targetDecPosn, 2, 3600);
-    cli->updatePersistentField(COMMAND_DEC_ROW, decBuff);
+    cli->updatePersistentField(DeviceName, COMMAND_DEC_ROW, decBuff);
 
     // Print current altitude:
     char curAltBuf[12];
@@ -663,35 +660,35 @@ void MountControl::updateStatusFields()
     // Print target altitude:
     char tgtAltBuf[12];
     sprintf(tgtAltBuf, "%-+6.4f\u00b0", rad2deg(altPosnCmd_rad));
-    cli->updatePersistentField(TARGET_ALT_ROW, tgtAltBuf);
+    cli->updatePersistentField(DeviceName, TARGET_ALT_ROW, tgtAltBuf);
 
     // // Print altitude error:
     char altErrBuff[12];
     sprintf(altErrBuff, "%-+6.4f\u00b0", rad2deg(AltPosnErr));
-    cli->updatePersistentField(ALT_ERR_ROW, altErrBuff);
+    cli->updatePersistentField(DeviceName, ALT_ERR_ROW, altErrBuff);
 
     // Print altitude Rate:
     char altRateBuff[12];
     sprintf(altRateBuff, "%-+6.4f\u00b0/s", rad2deg(altRateCmd_rps));
-    cli->updatePersistentField(ALT_RATE_ROW, altRateBuff);
+    cli->updatePersistentField(DeviceName, ALT_RATE_ROW, altRateBuff);
 
     // Print current azimuth:
     char curAzBuf[12];
     sprintf(curAzBuf, "%-+6.4f\u00b0", rad2deg(azPosnFb_rad));
-    cli->updatePersistentField(CURRENT_AZ_ROW, curAzBuf);
+    cli->updatePersistentField(DeviceName, CURRENT_AZ_ROW, curAzBuf);
 
     // Print target azimuth:
     char tgtAzBuf[12];
     sprintf(tgtAzBuf, "%-+6.4f\u00b0", rad2deg(azPosnCmd_rad));
-    cli->updatePersistentField(TARGET_AZ_ROW, tgtAzBuf);
+    cli->updatePersistentField(DeviceName, TARGET_AZ_ROW, tgtAzBuf);
 
     // Print azimuth error:
     char azErrBuff[12];
     sprintf(azErrBuff, "%-+6.4f\u00b0", rad2deg(AzPosnErr));
-    cli->updatePersistentField(AZ_ERR_ROW, azErrBuff);
+    cli->updatePersistentField(DeviceName, AZ_ERR_ROW, azErrBuff);
 
     // Print azimuth rate:
     char azRateBuff[12];
     sprintf(azRateBuff, "%-+6.4f\u00b0/s", rad2deg(azRateCmd_rps));
-    cli->updatePersistentField(AZ_RATE_ROW, azRateBuff);
+    cli->updatePersistentField(DeviceName, AZ_RATE_ROW, azRateBuff);
 }

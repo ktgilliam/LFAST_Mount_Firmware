@@ -14,7 +14,7 @@ public:
         DISABLED = 0b000,
         POSITION = 0b001,
         VELOCITY = 0b010,
-        CURRENT = 0b100
+        TORQUE = 0b100
     } COMMAND_MODE;
 
     SlewDriveControl(std::string label);

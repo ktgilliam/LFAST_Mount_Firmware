@@ -7,8 +7,8 @@
  ///
 
 #pragma once
-#include <device.h>
-#include <cliMacros.h>
+#include "teensy41_device.h"
+// #include <cliMacros.h>
 
 inline void LedDebugBlink(uint32_t prd, uint32_t blinks)
 {

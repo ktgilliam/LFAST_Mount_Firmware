@@ -2,7 +2,6 @@
 
 #include <cinttypes>
 #include <TcpCommsService.h>
-#include <cliMacros.h>
 #include <queue>
 #include <TerminalInterface.h>
 #include <mountConfig.h>
@@ -80,7 +79,7 @@ namespace LFAST
 
 class MountControl;
 
-class MountControl
+class MountControl : public LFAST_Device
 {
 private:
     MountControl();
@@ -242,7 +241,6 @@ public:
     void setGuiderOffset(uint8_t axis, double rate);
     // void setTargetAltAz(double alt, double az);
 
-    void connectTerminalInterface(TerminalInterface* _cli);
     void setupPersistentFields();
     void serviceCLI();
     void abortSlew();
